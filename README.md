@@ -11,4 +11,4 @@ Minimum error accepted for fitness evaluation = 240.19<br>
 Fitness function = MAE (mean absolute error)<br>
 
 <p>
-![Graph plot between actual and estimated effort](/assets/line-chart-ucw_pso.png "Graph plot between actual and estimated effort")
+![Graph plot between actual and estimated effort](line-chart-ucw_pso.png "Graph plot between actual and estimated effort")
