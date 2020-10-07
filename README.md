@@ -11,5 +11,4 @@ Minimum error accepted for fitness evaluation = 240.19<br>
 Fitness function = MAE (mean absolute error)<br>
 
 <p>
-![Graph plot between actual and estimated effort](line-chart-ucw_pso.png "Graph plot between actual and estimated effort")
-!["AdminLTE Presentation"](https://adminlte.io/AdminLTE3.png "AdminLTE Presentation")
+![line-chart-ucw_pso](https://user-images.githubusercontent.com/71623245/95314236-3d94ca80-08bb-11eb-9bfb-1b7c805f4c48.png)
