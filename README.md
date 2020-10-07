@@ -12,3 +12,4 @@ Fitness function = MAE (mean absolute error)<br>
 
 <p>
 ![Graph plot between actual and estimated effort](line-chart-ucw_pso.png "Graph plot between actual and estimated effort")
+!["AdminLTE Presentation"](https://adminlte.io/AdminLTE3.png "AdminLTE Presentation")
