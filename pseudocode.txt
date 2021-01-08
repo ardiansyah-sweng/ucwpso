@@ -1,0 +1,64 @@
+----------------------------------------------------------------
+Algorithm 1 - Use Case Complexity Weight Optimization using PSO
+----------------------------------------------------------------
+
+INPUT   : Dataset D
+OUTPUT  : Array of Y', AE, and Optimized Weight
+INITIALIZATION  : POP_SIZE = 10, x1[5.00, 7.49], x2[7.50, 12.49], x3[12.50, 15.00], MAX_ITER = 500, C1 = 2.8, C2 = 1.3, PF = 20, w = 0.9, FITNESS_VALUE = 240.19, Y' = estimated effort, Y = actual effort
+
+FUNCTION Effort_Estimation(UComplexity)
+    [UUCW] := SUM([UComplexity])
+    [UUCP] := UUCW + D[uaw]
+    [UCP]  := UUCP * D[tcf] * D[ecf]
+    [Y']   := UCP * PF
+    [AE]   := Absolute(Y' - D[Y])
+RETURN [AE]
+
+// Main Program
+REPEAT WHILE SIZE(D) > 0
+    
+    //Generate Population
+    FOR (i = 0; i <= POP_SIZE; i++)
+        UComplexity[simple]  := RANDOM(x1) * D[simple]
+        UComplexity[average] := RANDOM(x2) * D[average]
+        UComplexity[complex] := RANDOM(x3) * D[complex]
+        FUNCTION Effort_Estimation(UComplexity)
+    END FOR
+
+    Pbest := [UComplexity]
+    [X]   := [UComplexity]
+    Gbest := MIN([AE])
+
+    REPEAT WHILE (Gbest > FITNESS_VALUE) OR (MAX_ITER > 0)
+        FOR (i = 0; i <= POP_SIZE; i++)
+            // Update velocity and position
+            v_new = w * v_last + C1 * RANDOM[0, 1] * (Pbest - X_last) + C2 * RANDOM[0, 1] * (Gbest - X_last)
+            X_new = X_last + v_new
+
+            UComplexity[simple]  := X_new[simple]  * D[simple]
+            UComplexity[average] := X_new[average] * D[average]
+            UComplexity[complex] := X_new[complex] * D[complex]
+            FUNCTION Effort_Estimation(UComplexity)
+
+            // compare
+            IF AE_last > AE_current
+                [Pbest] := AE_current
+            END IF
+        END FOR
+        
+        Gbest := MIN([Pbest])
+
+        IF Gbest < FITNESS_VALUE
+            [AE] := Gbest
+            JUMP TO THE NEXT PROJECT DATA
+        END IF
+
+        [AE] := Gbest
+        DECREMENT MAX_ITER
+    END REPEAT
+    
+    [AE] := MIN([AE])
+
+    DECREMENT SIZE(D)
+END REPEAT
+PRINT [Y'], [AE], [X_new]
