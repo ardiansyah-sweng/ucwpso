@@ -1,5 +1,6 @@
 <html>
-    <Title>Use Case Complexity Weight using PSO</Title>
+<Title>Use Case Complexity Weight using PSO</Title>
+
 </html>
 
 <?php
@@ -170,6 +171,7 @@ class UCWParticleSwarmOptimization
         }
         $ret1 = $this->splitter($useCaseWeight);
         $ret2 = $this->splitter($position);
+        
         if ($flag == 'UCCW') {
             return $ret1;
         }
@@ -316,7 +318,12 @@ class UCWParticleSwarmOptimization
      */
     function searchKeyIndex($key, $data)
     {
-        return array_search($key, $data);
+        foreach ($data as $index => $val) {
+            if ($val['ae'] == $key) {
+                return $index;
+            }
+        }
+        //return array_search($key, $data);
     }
 
     /**
@@ -327,9 +334,22 @@ class UCWParticleSwarmOptimization
     function absoluteError($dataset, $estimatedEffort)
     {
         for ($i = 0; $i <= $this->SWARM_SIZE - 1; $i++) {
-            $absoluteError[$i] = abs($estimatedEffort[$i] - $dataset['actualEffort']);
+            $ret[$i]['ae'] = abs($estimatedEffort[$i] - $dataset['actualEffort']);
+            $ret[$i]['estimated'] = $estimatedEffort[$i];
         }
-        return $absoluteError;
+        return $ret;
+    }
+
+    /**
+     * Sum array
+     */
+    function sumArray($data)
+    {
+        $sum = 0;
+        foreach ($data as $key => $val) {
+            $sum = $sum + $val['ae'];
+        }
+        return $sum;
     }
 
     /**
@@ -339,8 +359,14 @@ class UCWParticleSwarmOptimization
      */
     public function fitnessFunction($absoluteError, $positions)
     {
+        // print_r($absoluteError);
+        // echo '<p>';
+        // print_r(min($absoluteError));
+        // echo '<p>';
         $minimumAbsoluteError = min($absoluteError);
-        $keyIndex = $this->searchKeyIndex($minimumAbsoluteError, $absoluteError);
+        // print_r($minimumAbsoluteError['ae']);
+        // echo '<p>';
+        $keyIndex = $this->searchKeyIndex($minimumAbsoluteError['ae'], $absoluteError);
         foreach ($positions as $key => $val) {
             if ($keyIndex == $key) {
                 for ($i = 0; $i <= 2; $i++) {
@@ -357,11 +383,15 @@ class UCWParticleSwarmOptimization
             }
         }
         $ret[0]['keyIndex'] = $this->searchKeyIndex($minimumAbsoluteError, $absoluteError);
-        $ret[0]['minimumAE'] = min($absoluteError);
+        $ret[0]['minimumAE'] = $minimumAbsoluteError['ae'];
+        $ret[0]['estimated'] = $minimumAbsoluteError['estimated'];
 
-        $mae = array_sum($absoluteError) / count($absoluteError);
-
+        $mae = $this->sumArray($absoluteError) / count($absoluteError);
         $ret[0]['mae'] = $mae;
+
+        // print_r($ret);
+        // echo '<p>';
+
         if ($mae < $this->FITNESS_VALUE_BASELINE['silhavy']) {
             $ret[0]['continue'] = "False";
             return $ret;
@@ -414,8 +444,7 @@ class UCWParticleSwarmOptimization
     function initialPopulation($dataset, $flag)
     {
         $positions = $this->initialUseCaseWeight();
-        $ret = $this->useCaseComplexity($dataset, $flag, $positions);
-        return $ret;
+        return $this->useCaseComplexity($dataset, $flag, $positions);
     }
 
     /**
@@ -424,15 +453,15 @@ class UCWParticleSwarmOptimization
     function mergeAEandPosition($absoluteError, $positions)
     {
         for ($i = 0; $i <= $this->SWARM_SIZE - 1; $i++) {
-            $ret[$i]['ae'] = $absoluteError[$i];
+            $ret[$i]['ae'] = $absoluteError[$i]['ae'];
             $ret[$i]['positions'] = $positions[$i];
+            $ret[$i]['estimated'] = $absoluteError[$i]['estimated'];
         }
         return $ret;
     }
 
     /**
-     * AE Comparation
-     * to determine pBest in each iteration
+     * AE Comparison to determine pBest in each iteration
      */
     function compareAE($lastAE, $currentAE)
     {
@@ -440,6 +469,7 @@ class UCWParticleSwarmOptimization
             if ($lastAE[$i]['ae'] > $currentAE[$i]['ae']) {
                 $lastAE[$i]['ae'] = $currentAE[$i]['ae'];
                 $lastAE[$i]['positions'] = $currentAE[$i]['positions'];
+                $lastAE[$i]['estimated'] = $currentAE[$i]['estimated'];
             }
         }
         return $lastAE;
@@ -459,6 +489,8 @@ class UCWParticleSwarmOptimization
         $ucp = $this->ucp($dataset, $uucp);
         $estimatedEffort = $this->estimatedEffort($ucp);
         $absoluteError = $this->absoluteError($dataset, $estimatedEffort);
+        // print_r($absoluteError);
+        // echo '<p>';
         $copiedAEInitial = $this->mergeAEandPosition($absoluteError, $positions);
 
         foreach ($this->fitnessFunction($absoluteError, $positions) as $val) {
@@ -470,8 +502,17 @@ class UCWParticleSwarmOptimization
         //Entering Iteration
         for ($iteration = 0; $iteration <= $this->MAX_ITERATION - 1; $iteration++) {
             if ($iteration == 0) {
-                $velocity = $this->updateVelocity($this->inertia($iteration), $this->initialVelocity(),
-                                    $simpleGBest, $averageGBest, $complexGBest, $positions, $positions, $C1, $C2);
+                $velocity = $this->updateVelocity(
+                    $this->inertia($iteration),
+                    $this->initialVelocity(),
+                    $simpleGBest,
+                    $averageGBest,
+                    $complexGBest,
+                    $positions,
+                    $positions,
+                    $C1,
+                    $C2
+                );
                 $positions = $this->labelingPositions($velocity, $positions);
                 $UCCW = $this->useCaseComplexity($dataset, "UCCW", $positions);
                 $uucw = $this->uucw($UCCW);
@@ -489,8 +530,17 @@ class UCWParticleSwarmOptimization
                 }
             }
             if ($iteration >= 1) {
-                $velocity = $this->updateVelocity($this->inertia($iteration), 
-                                    $velocity, $simpleGBest, $averageGBest, $complexGBest, $pBest, $positions, $C1, $C2);
+                $velocity = $this->updateVelocity(
+                    $this->inertia($iteration),
+                    $velocity,
+                    $simpleGBest,
+                    $averageGBest,
+                    $complexGBest,
+                    $pBest,
+                    $positions,
+                    $C1,
+                    $C2
+                );
                 $positions = $this->labelingPositions($velocity, $positions);
                 $UCCW = $this->useCaseComplexity($dataset, "UCCW", $positions);
                 $uucw = $this->uucw($UCCW);
@@ -499,34 +549,55 @@ class UCWParticleSwarmOptimization
                 $estimatedEffort = $this->estimatedEffort($ucp);
                 $absoluteError = $this->absoluteError($dataset, $estimatedEffort);
                 $comparedAE = $this->compareAE($comparedAE, $this->mergeAEandPosition($absoluteError, $positions));
+                // print_r($comparedAE);
+                // echo '<p>';
                 $pBest = $this->personalBest($comparedAE);
+
                 foreach ($this->fitnessFunction($absoluteError, $positions) as $val) {
                     $simpleGBest = $val['simpleGBest'];
                     $averageGBest = $val['averageGBest'];
                     $complexGBest = $val['complexGBest'];
                 }
-                $allFitnessEvaluation[] = $this->fitnessFunction($absoluteError, $positions);
-                if ($this->fitnessFunction($absoluteError, $positions)[0]['continue'] == "False") { break; }
+
+                // print_r($this->fitnessFunction($absoluteError, $positions));
+                // echo '<p>';
+                $isContinue = $this->fitnessFunction($absoluteError, $positions)[0]['continue'];
+                $mae = $this->fitnessFunction($absoluteError, $positions)[0]['mae'];
+                $estimated = $this->fitnessFunction($absoluteError, $positions)[0]['estimated'];
+
+                if ($isContinue == "True") {
+                    $all[$iteration]['mae'] = $mae;
+                    $all[$iteration]['continue'] = $isContinue;
+                    $all[$iteration]['estimated'] = $estimated;
+                    //print_r($this->fitnessFunction($absoluteError, $positions));
+                    //echo '<p>';
+                } else {
+                    $all[$iteration]['mae'] = $mae;
+                    $all[$iteration]['continue'] = $isContinue;
+                    $all[$iteration]['estimated'] = $estimated;
+                    //print_r($this->fitnessFunction($absoluteError, $positions));
+                    //echo '<p>';
+                    break;
+                }
             }
         }
-        for ($i = 0; $i <= count($allFitnessEvaluation) - 1; $i++) {
-            $mae[] = $allFitnessEvaluation[$i][0]['mae'];
-        }
+        //print_r($all);
+        //echo '<p>';
 
-        if ($this->fitnessFunction($absoluteError, $positions)[0]['continue'] == "False") {
-            $ret[] = $this->fitnessFunction($absoluteError, $positions)[0]['mae'];
-            return $this->fitnessFunction($absoluteError, $positions)[0]['mae'];
-        } else {
-            $ret[] = min($mae);
-            return min($mae);
-        }
-        echo 'Swarm Size = '. $this->SWARM_SIZE;
-        echo '<br>';
+        //print_r(min($all));
+        return min($all);
+        // if ($this->fitnessFunction($absoluteError, $positions)[0]['continue'] == "False") {
+        //     $ret[] = $this->fitnessFunction($absoluteError, $positions)[0]['mae'];
+        //     return $this->fitnessFunction($absoluteError, $positions)[0]['mae'];
+        // } else {
+        //     $ret[] = min($mae);
+        //     return min($mae);
+        // }
     }
 }
 
 /**
- * Dataset 70 data point
+ * Dataset 71 data point
  * Attribute (7): simple, average, complex, uaw, tcf, ecf, actual effort
  */
 $dataset = array(
@@ -565,6 +636,7 @@ $dataset = array(
     array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
     array('simpleUC' => 0, 'averageUC' => 13, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 0.95, 'ecf' => 0.92, 'actualEffort' => 6433),
     array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
+    array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 6, 'tcf' => 0.9, 'ecf' => 0.94, 'actualEffort' => 6400),
     array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
     array('simpleUC' => 0, 'averageUC' => 13, 'complexUC' => 15, 'uaw' => 6, 'tcf' => 0.9, 'ecf' => 0.91, 'actualEffort' => 6337),
@@ -605,36 +677,66 @@ $start = microtime(true);
 $ucwPSO = new UCWParticleSwarmOptimization();
 $numDataset = count($dataset);
 
-$repeat = 30;
-for ($j = 0; $j <= $repeat - 1; $j++) {
-    $temp = 0;
-    for ($i = 0; $i <= count($dataset) - 1; $i++) {
-        $tes = $ucwPSO->mainPSO($dataset[$i]);
-        $allAE[$i]['ae'] = $tes;
-        $temp = $temp + $tes;
+$temp = 0;
+$iterasi = 30;
+
+foreach ($dataset as $key => $val) {
+    for ($i = 0; $i <= $iterasi - 1; $i++) {
+        $run = $ucwPSO->mainPSO($dataset[$key]);
+        $estimated[] = $run['estimated'];
     }
-    $grandMAE[] = $allAE;
+    //print_r($estimated);
+    //echo '<br>';   
+    //$ae = abs((array_sum($estimated)/count($estimated)) - $dataset[$key]['actualEffort']);
+    $rerataKolomEstimated = array_sum($estimated) / count($estimated);
+    echo $rerataKolomEstimated . '<br>';
+    $ae[] = abs($rerataKolomEstimated - $dataset[$key]['actualEffort']);
+    $estimated = [];
 }
 
-$temp = 0;
-for ($i = 0; $i <= count($grandMAE) - 1; $i++) {
-    for ($j = 0; $j <= $numDataset - 1; $j++) {
-        $temp = $temp + $grandMAE[$i][$j]['ae'];
-    }
-    $arr[$i] = $temp / $numDataset;
-    $temp = 0;
-}
-echo '<p>';
-echo 'Number of experiment: ' . $repeat . '<br>';
-echo 'Best minimum AE: ' . min($arr) . '<br>';
-$keyIndexMinAE = array_search(min($arr), $arr);
-for ($i = 0; $i <= count($grandMAE) - 1; $i++) {
-    if ($keyIndexMinAE == $i) {
-        for ($j = 0; $j <= $numDataset - 1; $j++) {
-            echo $grandMAE[$i][$j]['ae'] . '<br>';
-        }
-    }
-}
+echo '<br>';
+echo "Grand MAE:" . array_sum($ae) / count($ae);
+// }
+
+
+
+
+
+//print_r($run);
+//     if($run[0]['continue'] == "False"){
+//         echo $run[0]['mae'].'<br>';
+//     }
+// }
+// $repeat = 1;
+// for ($j = 0; $j <= $repeat - 1; $j++) {
+//     $temp = 0;
+//     for ($i = 0; $i <= count($dataset) - 1; $i++) {
+//         $tes = $ucwPSO->mainPSO($dataset[0]);
+//         $allAE[$i]['ae'] = $tes;
+//         $temp = $temp + $tes;
+//     }
+//     $grandMAE[] = $allAE;
+// }
+
+// $temp = 0;
+// for ($i = 0; $i <= count($grandMAE) - 1; $i++) {
+//     for ($j = 0; $j <= $numDataset - 1; $j++) {
+//         $temp = $temp + $grandMAE[$i][$j]['ae'];
+//     }
+//     $arr[$i] = $temp / $numDataset;
+//     $temp = 0;
+// }
+// echo '<p>';
+// echo 'Number of experiment: ' . $repeat . '<br>';
+// echo 'Best minimum AE: ' . min($arr) . '<br>';
+// $keyIndexMinAE = array_search(min($arr), $arr);
+// for ($i = 0; $i <= count($grandMAE) - 1; $i++) {
+//     if ($keyIndexMinAE == $i) {
+//         for ($j = 0; $j <= $numDataset - 1; $j++) {
+//             echo $grandMAE[$i][$j]['ae'] . '<br>';
+//         }
+//     }
+// }
 
 echo '<p>';
 $end = microtime(true);

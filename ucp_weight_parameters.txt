@@ -1,0 +1,3 @@
+simple,5,7.49
+average,7.5,12.49
+complex,12.5,15

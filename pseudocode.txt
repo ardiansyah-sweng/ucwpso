@@ -22,7 +22,8 @@ REPEAT WHILE SIZE(D) > 0
         UComplexity[simple]  := RANDOM(x1) * D[simple]
         UComplexity[average] := RANDOM(x2) * D[average]
         UComplexity[complex] := RANDOM(x3) * D[complex]
-        FUNCTION Effort_Estimation(UComplexity)
+        Calculate UUCW
+        Calculate Effort Estimation
     END FOR
 
     Pbest := [UComplexity]
@@ -32,7 +33,7 @@ REPEAT WHILE SIZE(D) > 0
     REPEAT WHILE (Gbest > FITNESS_VALUE) OR (MAX_ITER > 0)
         FOR (i = 0; i <= POP_SIZE; i++)
             // Update velocity and position
-            v_new = w * v_last + C1 * RANDOM[0, 1] * (Pbest - X_last) + C2 * RANDOM[0, 1] * (Gbest - X_last)
+            v_new = (w * v_last) + (C1 * RANDOM[0, 1]) * (Pbest - X_last) + (C2 * RANDOM[0, 1]) * (Gbest - X_last)
             X_new = X_last + v_new
 
             UComplexity[simple]  := X_new[simple]  * D[simple]
@@ -54,7 +55,7 @@ REPEAT WHILE SIZE(D) > 0
         END IF
 
         [AE] := Gbest
-        DECREMENT MAX_ITER
+        INCREMENT++ UNTIL MAX_ITER REACHED
     END REPEAT
     
     [AE] := MIN([AE])
