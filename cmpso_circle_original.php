@@ -489,46 +489,47 @@ class MPUCWPSO
 
             //Fitness value evaluation
             if ($GBest['ae'] > $this->FITNESS_VALUE_BASELINE['polynomial']) {
-                $temp[] = $GBest;
+                $temps[] = $GBest;
             } else {
-                //echo '<br>Ono: ';
-                //print_r($GBest);
-                $ae[] = $GBest['ae'];
-                //echo '<br>';
                 return $GBest;
-                break;
             }
             $iterasi++;
         } // End of iterasi
 
-        // print_r(!empty($temp));
-        if (!empty($temp)) {
-            return $temp;
-            //     echo ' Ora ono : ';
-            $minAE = (min(array_column($temp, 'ae')));
-            $ae[] = $minAE;
-            //     //echo $minAE;
-            //     print_r($temp[array_search($minAE, $temp)]);
+        if (!empty($temps)) {
+            $minAE = (min(array_column($temps, 'ae')));
+            return $temps[array_search($minAE, $temps)];
         }
     } // End of main()
+
 
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
     {
         foreach ($dataset as $val) {
-            $result = $this->Main($val, $max_iter, $swarm_size, $max_counter, $limit_percentage);
-            if (count($result) == $max_iter) {
-                $minAE = min(array_column($result, 'ae'));
-                $ret[] = $result[array_search($minAE, $result)];
-            }
-            if (count($result) != $max_iter) {
-                $ret[] = $result;
-            }
+            $ret[] = $this->Main($val, $max_iter, $swarm_size, $max_counter, $limit_percentage);
         }
-        $ae = 0;
-        foreach ($ret as $val) {
-            $ae += $val['ae'];
+        return $ret;
+    }
+
+    function mae($data)
+    {
+        $sumMAE = array_sum(array_column($data, 'ae'));
+        return $sumMAE / count($data);
+    }
+
+    function controllingPosition($predicted_datasets)
+    {
+        $flag = [];
+        if ($predicted_datasets['xSimple'] < $this->simpleMin || $predicted_datasets['xSimple'] > $this->simpleMax) {
+            $flag[] = 1;
         }
-        return ($ae / count($dataset));
+        if ($predicted_datasets['xAverage'] < $this->averageMin || $predicted_datasets['xAverage'] > $this->averageMax) {
+            $flag[] = 1;
+        }
+        if ($predicted_datasets['xComplex'] < $this->complexMin || $predicted_datasets['xComplex'] > $this->complexMax) {
+            $flag[] = 1;
+        }
+        return $flag;
     }
 
 }
@@ -611,20 +612,6 @@ $dataset = array(
     array('simpleUC' => 5, 'averageUC' => 18, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5775)
 );
 
-//MEDIUM
-// $dataset = array(
-//     array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
-//     array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
-//     array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
-//     array('simpleUC' => 1, 'averageUC' => 11, 'complexUC' => 11, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6232),
-//     array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6173),
-//     array('simpleUC' => 2, 'averageUC' => 13, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 6062), 
-//     array('simpleUC' => 1, 'averageUC' => 19, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6024),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 8, 'uaw' => 6, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5927),
-//     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
-// );
-
 $MAX_ITER = 40;
 $MAX_TRIAL = 1000;
 $numDataset = count($dataset);
@@ -633,19 +620,82 @@ $max_counter = 100000;
 $limit_percentage = 0.35;
 
 for ($max_iter = 1; $max_iter <= $MAX_ITER; $max_iter++) {
-    $start = microtime(true);
     $mpucwPSO = new MPUCWPSO();
     for ($trial = 0; $trial <= $MAX_TRIAL; $trial++) {
         $result = $mpucwPSO->finishing($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage);
-        $arrResult[] = $result;
+        //calculcate MAE
+        $mae = $mpucwPSO->mae($result);
+        //save to array
+        $maes[] = $mae;
+        $results[] = $result;
     }
-    $bestMAE = min($arrResult);
-    echo 'Max Iter: ' . $max_iter . ' Best MAE: ' . $bestMAE;
-    echo '<br>';
+    //define best MAE
+    $bestMAE = min($maes);
+    //find index $bestMAE
+    $bestMAEIndex = array_search($bestMAE, $maes);
+    //save to final results
+    $finalResults[] = $results[$bestMAEIndex];
+    //clear array
+    $maes = [];
+    $results = [];
+}
+//Final Results
+foreach ($finalResults as $val) {
+    //calculate each MAE
+    $mae = $mpucwPSO->mae($val);
+    //save to array
+    $maes[] = $mae;
+    $results[] = $val;
+}
+//define best MAE
+$bestMAE = min($maes);
+//find index bestMAE
+$bestMAEIndex = array_search($bestMAE, $maes);
+//print final result and save to txt
+echo 'Best MAE: ' . $bestMAE;
+echo '<br>';
+foreach ($results[$bestMAEIndex] as $key => $val) {
+    echo $key . ' | ';
+    $velocity_explotion = $mpucwPSO->controllingPosition($val);
 
-    //convert to txt
-    $data = array($max_iter,$bestMAE);
-    $fp = fopen('hasil_mpso_circle.txt', 'a');
+    if (!empty($velocity_explotion)) {
+        $total[] = 1;
+        foreach ($velocity_explotion as $index => $use_case_weight) {
+            if ($use_case_weight) {
+                if ($index == 0) {
+                    $counter['simple'][] = $use_case_weight;
+                }
+                if ($index == 1) {
+                    $counter['average'][] = $use_case_weight;
+                }
+                if ($index == 2) {
+                    $counter['complex'][] = $use_case_weight;
+                }
+            }
+        }
+    }
+
+    echo $val['estimatedEffort'] . ' | ' . $val['ae'] . ' Simple: ' . $val['xSimple'];
+    echo '<br>';
+    $data = array($dataset[$key]['actualEffort'], $val['estimatedEffort'],$val['xSimple'],$val['xAverage'],$val['xComplex']);
+    $fp = fopen('hasil_cmpso_circle_original.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }
+echo 'Sum: ' . array_sum($total) . ' Percentage: ' . array_sum($total) / count($dataset);
+echo '<br>';
+foreach ($counter as $index => $value) {
+    //print_r($value);
+    if ($index == 0) {
+        echo 'Simple: ' . array_sum($value);
+    }
+    if ($index == 1) {
+        echo 'Average: ' . array_sum($value);
+    }
+    if ($index == 2) {
+        echo 'Complex: ' . array_sum($value);
+    }
+    echo '<br>';
+}
+$maes = [];
+$results = [];

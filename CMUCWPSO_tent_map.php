@@ -300,8 +300,8 @@ class MPUCWPSO
                 $R2[$iterasi] = $this->chaoticR1R2($R2[$iterasi-1]);
 
                 //Inertia weight
-                if ($r[$iterasi - 1] < 0.7) {
-                    $r[$iterasi] = $r[$iterasi - 1] / 0.7;
+                if ($r[$iterasi] < 0.7) {
+                    $r[$iterasi] = $r[$iterasi-1] / 0.7;
                 } else {
                     $r[$iterasi] = (10 / 3) * (1 - $r[$iterasi - 1]);
                 }
@@ -440,6 +440,7 @@ class MPUCWPSO
             //     //echo $minAE;
             //     print_r($temp[array_search($minAE, $temp)]);
         }
+        $R1 = []; $R2 = []; $r = [];
     } // End of main()
 
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)

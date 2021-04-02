@@ -1,5 +1,5 @@
 <?php
-set_time_limit(100000);
+set_time_limit(10000);
 
 class MPUCWPSO
 {
@@ -14,7 +14,7 @@ class MPUCWPSO
         'ardiansyah' => 404.85,
         'polynomial' => 238.11
     );
-
+    private $AVOIDED_RANDOM_VALUE = array(0.00, 0.25, 0.50, 0.75, 1.00);
     private $INERTIA_MAX = 0.9;
     private $INERTIA_MIN = 0.4;
     private $C1 = 2;
@@ -65,94 +65,22 @@ class MPUCWPSO
     }
 
     /**
-     * Fungsi Stochastic PBest
-     * Parameter: arrPartikel
-     * Return: arrSPBest[posisi, ae, estimated effort]
+     * Fungsi pengecekan $r0 != AVOIDED_RANDOM_VALUE
+     * Jika sama ulangi random hingga tidak sama
      */
-    function SPBest($partikel)
+    function randomNumber($r0_baru)
     {
         $i = 0;
-        $CPbestIndex1 = array_rand($partikel);
-        $CPbestIndex2 = array_rand($partikel);
-        $CPbest1 = $partikel[$CPbestIndex1];
-        $CPbest2 = $partikel[$CPbestIndex2];
-        // echo '<p>Master<br>';
-        // print_r($CPbest1);
-        // echo '<br>';
-        // print_r($CPbest2);
-        // echo '<p>';
-
-        if ($CPbestIndex1 != $CPbestIndex2) {
-            if ($CPbest1['ae'] < $CPbest2['ae']) {
-                $CPbest = $CPbest1;
+        while ($i < count($this->AVOIDED_RANDOM_VALUE)) {
+            if ($this->AVOIDED_RANDOM_VALUE[$i] == $r0_baru) {
+                $r0_baru = number_format($this->randomZeroToOne(), 2);
+                $i = 0;
             }
-            if ($CPbest1['ae'] > $CPbest2['ae']) {
-                $CPbest = $CPbest2;
+            if ($this->AVOIDED_RANDOM_VALUE[$i] != $r0_baru) {
+                $i++;
             }
         }
-        // echo 'Tingkat 1<br>';
-        // print_r($CPbest);
-        // echo '<br>';
-
-        for ($i = 0; $i <= 10; $i++) {
-            $CPbestIndex1 = array_rand($partikel);
-            $CPbestIndex2 = array_rand($partikel);
-            $CPbest1 = $partikel[$CPbestIndex1];
-            $CPbest2 = $partikel[$CPbestIndex2];
-            if ($CPbestIndex1 != $CPbestIndex2) {
-                if ($CPbest1['ae'] < $CPbest2['ae']) {
-                    $CPbest = $CPbest1;
-                }
-                if ($CPbest1['ae'] > $CPbest2['ae']) {
-                    $CPbest = $CPbest2;
-                }
-                break;
-            }
-            // echo '<br>Tingkat 2<br>';
-            // print_r($CPbest);
-            // echo '<br>';
-            // print_r($CPbest1);
-            // echo '<br>';
-            // print_r($CPbest2);
-            // echo '<p>';
-        }
-
-
-
-        //while ($i < count($partikel)) {
-        //Ambil acak 2 partikel dari populasi
-        //Pilih yang AE terkecil
-        //Yang terpilih menjadi CPbest
-        //     if ($CPbestIndex1 == $CPbestIndex2) {
-        //         $CPbestIndex1 = array_rand($partikel);
-        //         $CPbestIndex2 = array_rand($partikel);
-        //         $CPbest1 = $partikel[$CPbestIndex1];
-        //         $CPbest2 = $partikel[$CPbestIndex2];
-        //         $i = 0;
-        //         echo $CPbest1.'gak ada'.$CPbest2;
-        //     }
-        //     if ($CPbestIndex1 != $CPbestIndex2) {
-        //         if ($CPbest1['ae'] < $CPbest2['ae']) {
-        //             $CPbest = $CPbest1;
-        //         }
-        //         if ($CPbest1['ae'] > $CPbest2['ae']) {
-        //             $CPbest = $CPbest2;
-        //         }
-        //         break;
-        //     }
-        // }
-        //print_r($CPbest);
-
-        //Bandingkan CPbest dengan Pbest tiap partikel
-        foreach ($partikel as $val) {
-            if ($CPbest['ae'] < $val['ae']) {
-                $ret[] = $CPbest;
-            }
-            if ($CPbest['ae'] > $val['ae'] || ($CPbest['ae'] == $val['ae'])) {
-                $ret[] = $val;
-            }
-        }
-        return $ret;
+        return $r0_baru;
     }
 
     /**
@@ -255,32 +183,32 @@ class MPUCWPSO
         ##Masuk Iterasi
         $iterasi = 0;
         while ($iterasi <= $max_iter - 1) {
-            $random_R1 = $this->randomZeroToOne();
-            $random_R2 = $this->randomZeroToOne();
-            $R1[$iterasi] = fmod($random_R1 + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_R1), 1);
-            $R2[$iterasi] = fmod($random_R2 + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_R2), 1);
-
             if ($iterasi == 0) {
                 //Inertia weight
-                $random_zeroToOne = $this->randomZeroToOne();
-                $r[$iterasi] = fmod($random_zeroToOne + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_zeroToOne), 1);
+                $r0 = $this->randomNumber(number_format($this->randomZeroToOne(), 2));
+                $r[$iterasi] = (4 * $r0) * (1 - $r0);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
+
+                $r01 = $this->randomNumber(number_format($this->randomZeroToOne(), 2));
+                $r1[$iterasi] = (4 * $r01) * (1 - $r01);
+
+                $r02 = $this->randomNumber(number_format($this->randomZeroToOne(), 2));
+                $r2[$iterasi] = (4 * $r02) * (1 - $r02);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
-
                     $vInitial = $this->randomZeroToOne();
 
                     //Simple
-                    $vSimple = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikelAwal[$i]['xSimple'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xSimple'] - $partikelAwal[$i]['xSimple']));
+                    $vSimple = ($w * $vInitial) + (($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikelAwal[$i]['xSimple'])) + (($this->C2 * $r2[$iterasi]) * ($GBest['xSimple'] - $partikelAwal[$i]['xSimple']));
                     $xSimple = $partikelAwal[$i]['xSimple'] + $vSimple;
 
                     //Average
-                    $vAverage = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikelAwal[$i]['xAverage'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xAverage'] - $partikelAwal[$i]['xAverage']));
+                    $vAverage = ($w * $vInitial) + (($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikelAwal[$i]['xAverage'])) + (($this->C2 * $r2[$iterasi]) * ($GBest['xAverage'] - $partikelAwal[$i]['xAverage']));
                     $xAverage = $partikelAwal[$i]['xAverage'] + $vAverage;
 
                     //Complex
-                    $vComplex = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikelAwal[$i]['xComplex'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xComplex'] - $partikelAwal[$i]['xComplex']));
+                    $vComplex = ($w * $vInitial) + (($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikelAwal[$i]['xComplex'])) + (($this->C2 * $r2[$iterasi]) * ($GBest['xComplex'] - $partikelAwal[$i]['xComplex']));
                     $xComplex = $partikelAwal[$i]['xComplex'] + $vComplex;
 
                     //exceeding limit
@@ -352,7 +280,7 @@ class MPUCWPSO
                         $CPbest2 = $Pbest[$CPbestIndex2];
                         $counter = 0;
                     } else {
-                        break;
+                       break;
                     }
                 }
 
@@ -378,25 +306,26 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
-                $R1[$iterasi] = fmod($R1[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $R1[$iterasi-1]), 1);
-                $R2[$iterasi] = fmod($R2[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $R2[$iterasi-1]), 1);
-
+                
                 //Inertia weight
-                $r[$iterasi] = fmod($r[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $r[$iterasi-1]), 1);
+                $r[$iterasi] = (4 * $r[$iterasi - 1]) * (1 - $r[$iterasi - 1]);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
+
+                $r1[$iterasi] = (4 * $r1[$iterasi-1]) * (1 - $r1[$iterasi-1]);
+                $r2[$iterasi] = (4 * $r2[$iterasi-1]) * (1 - $r2[$iterasi-1]);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     //Simple
-                    $vSimple = ($w * $partikel[$iterasi - 1][$i]['vSimple']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']);
+                    $vSimple = ($w * $partikel[$iterasi - 1][$i]['vSimple']) + ($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']) + ($this->C2 * $r2[$iterasi]) * ($GBest['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']);
                     $xSimple = $partikel[$iterasi - 1][$i]['xSimple'] + $vSimple;
 
                     //Average
-                    $vAverage = ($w * $partikel[$iterasi - 1][$i]['vAverage']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']);
+                    $vAverage = ($w * $partikel[$iterasi - 1][$i]['vAverage']) + ($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']) + ($this->C2 * $r2[$iterasi]) * ($GBest['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']);
                     $xAverage = $partikel[$iterasi - 1][$i]['xAverage'] + $vAverage;
 
                     //Complex
-                    $vComplex = ($w * $partikel[$iterasi - 1][$i]['vComplex']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']);
+                    $vComplex = ($w * $partikel[$iterasi - 1][$i]['vComplex']) + ($this->C1 * $r1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']) + ($this->C2 * $r2[$iterasi]) * ($GBest['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']);
                     $xComplex = $partikel[$iterasi - 1][$i]['xComplex'] + $vComplex;
 
                     //exceeding limit
@@ -447,7 +376,14 @@ class MPUCWPSO
                     }
                 }
                 $GBest = $this->minimalAE($Pbest);
- 
+                //echo ' Gbest: ';
+                //print_r($GBest);
+                // print_r($partikel);
+                //echo '<br>';
+                // print_r($Pbest);
+                // echo '<p>';
+                // print_r($GBest);
+                //Fungsi SPbest
                 $CPbestIndex1 = array_rand($Pbest);
                 $CPbestIndex2 = array_rand($Pbest);
                 $CPbest1 = $Pbest[$CPbestIndex1];
@@ -484,51 +420,52 @@ class MPUCWPSO
                     }
                     //echo 'Tidak sama &nbsp<br>';
                 }
+
                 $SPbest = $Pbest;
             } // End of iterasi > 0
 
             //Fitness value evaluation
             if ($GBest['ae'] > $this->FITNESS_VALUE_BASELINE['polynomial']) {
-                $temp[] = $GBest;
+                $temps[] = $GBest;
             } else {
-                //echo '<br>Ono: ';
-                //print_r($GBest);
-                $ae[] = $GBest['ae'];
-                //echo '<br>';
                 return $GBest;
-                break;
             }
             $iterasi++;
         } // End of iterasi
 
-        // print_r(!empty($temp));
-        if (!empty($temp)) {
-            return $temp;
-            //     echo ' Ora ono : ';
-            $minAE = (min(array_column($temp, 'ae')));
-            $ae[] = $minAE;
-            //     //echo $minAE;
-            //     print_r($temp[array_search($minAE, $temp)]);
+        if (!empty($temps)) {
+            $minAE = (min(array_column($temps, 'ae')));
+            return $temps[array_search($minAE, $temps)];
         }
     } // End of main()
 
     function finishing($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
     {
         foreach ($dataset as $val) {
-            $result = $this->Main($val, $max_iter, $swarm_size, $max_counter, $limit_percentage);
-            if (count($result) == $max_iter) {
-                $minAE = min(array_column($result, 'ae'));
-                $ret[] = $result[array_search($minAE, $result)];
-            }
-            if (count($result) != $max_iter) {
-                $ret[] = $result;
-            }
+            $ret[] = $this->Main($val, $max_iter, $swarm_size, $max_counter, $limit_percentage);
         }
-        $ae = 0;
-        foreach ($ret as $val) {
-            $ae += $val['ae'];
+        return $ret;
+    }
+
+    function mae($data)
+    {
+        $sumMAE = array_sum(array_column($data, 'ae'));
+        return $sumMAE / count($data);
+    }
+
+    function controllingPosition($predicted_datasets)
+    {
+        $flag = [];
+        if ($predicted_datasets['xSimple'] < $this->simpleMin || $predicted_datasets['xSimple'] > $this->simpleMax) {
+            $flag[] = 1;
         }
-        return ($ae / count($dataset));
+        if ($predicted_datasets['xAverage'] < $this->averageMin || $predicted_datasets['xAverage'] > $this->averageMax) {
+            $flag[] = 1;
+        }
+        if ($predicted_datasets['xComplex'] < $this->complexMin || $predicted_datasets['xComplex'] > $this->complexMax) {
+            $flag[] = 1;
+        }
+        return $flag;
     }
 
 }
@@ -610,21 +547,6 @@ $dataset = array(
     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
     array('simpleUC' => 5, 'averageUC' => 18, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5775)
 );
-
-//MEDIUM
-// $dataset = array(
-//     array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
-//     array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
-//     array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
-//     array('simpleUC' => 1, 'averageUC' => 11, 'complexUC' => 11, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6232),
-//     array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6173),
-//     array('simpleUC' => 2, 'averageUC' => 13, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 6062), 
-//     array('simpleUC' => 1, 'averageUC' => 19, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6024),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 8, 'uaw' => 6, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5927),
-//     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
-// );
-
 $MAX_ITER = 40;
 $MAX_TRIAL = 1000;
 $numDataset = count($dataset);
@@ -633,19 +555,82 @@ $max_counter = 100000;
 $limit_percentage = 0.35;
 
 for ($max_iter = 1; $max_iter <= $MAX_ITER; $max_iter++) {
-    $start = microtime(true);
     $mpucwPSO = new MPUCWPSO();
     for ($trial = 0; $trial <= $MAX_TRIAL; $trial++) {
         $result = $mpucwPSO->finishing($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage);
-        $arrResult[] = $result;
+        //calculcate MAE
+        $mae = $mpucwPSO->mae($result);
+        //save to array
+        $maes[] = $mae;
+        $results[] = $result;
     }
-    $bestMAE = min($arrResult);
-    echo 'Max Iter: ' . $max_iter . ' Best MAE: ' . $bestMAE;
-    echo '<br>';
+    //define best MAE
+    $bestMAE = min($maes);
+    //find index $bestMAE
+    $bestMAEIndex = array_search($bestMAE, $maes);
+    //save to final results
+    $finalResults[] = $results[$bestMAEIndex];
+    //clear array
+    $maes = [];
+    $results = [];
+}
+//Final Results
+foreach ($finalResults as $val) {
+    //calculate each MAE
+    $mae = $mpucwPSO->mae($val);
+    //save to array
+    $maes[] = $mae;
+    $results[] = $val;
+}
+//define best MAE
+$bestMAE = min($maes);
+//find index bestMAE
+$bestMAEIndex = array_search($bestMAE, $maes);
+//print final result and save to txt
+echo 'Best MAE: ' . $bestMAE;
+echo '<br>';
+foreach ($results[$bestMAEIndex] as $key => $val) {
+    echo $key . ' | ';
+    $velocity_explotion = $mpucwPSO->controllingPosition($val);
 
-    //convert to txt
-    $data = array($max_iter,$bestMAE);
-    $fp = fopen('hasil_mpso_circle.txt', 'a');
+    if (!empty($velocity_explotion)) {
+        $total[] = 1;
+        foreach ($velocity_explotion as $index => $use_case_weight) {
+            if ($use_case_weight) {
+                if ($index == 0) {
+                    $counter['simple'][] = $use_case_weight;
+                }
+                if ($index == 1) {
+                    $counter['average'][] = $use_case_weight;
+                }
+                if ($index == 2) {
+                    $counter['complex'][] = $use_case_weight;
+                }
+            }
+        }
+    }
+
+    echo $val['estimatedEffort'] . ' | ' . $val['ae'] . ' Simple: ' . $val['xSimple'];
+    echo '<br>';
+    $data = array($dataset[$key]['actualEffort'], $val['estimatedEffort'],$val['xSimple'],$val['xAverage'],$val['xComplex']);
+    $fp = fopen('hasil_cmpso_logistic_original.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }
+echo 'Sum: ' . array_sum($total) . ' Percentage: ' . array_sum($total) / count($dataset);
+echo '<br>';
+foreach ($counter as $index => $value) {
+    //print_r($value);
+    if ($index == 0) {
+        echo 'Simple: ' . array_sum($value);
+    }
+    if ($index == 1) {
+        echo 'Average: ' . array_sum($value);
+    }
+    if ($index == 2) {
+        echo 'Complex: ' . array_sum($value);
+    }
+    echo '<br>';
+}
+$maes = [];
+$results = [];

@@ -1,5 +1,5 @@
 <?php
-set_time_limit(10000);
+set_time_limit(1000000);
 
 class MPUCWPSO
 {
@@ -79,7 +79,7 @@ class MPUCWPSO
 
     function chaoticR1R2($R1R2)
     {
-        return 1.07 * ((7.86 * $R1R2) - (23.31 * POW(2, $R1R2)) + (28.75 * POW(3, $R1R2)) - (13.302875 * POW(4, $R1R2)));
+        return 1.07 * ((7.86 * $R1R2) - (23.31 * POW($R1R2,2)) + (28.75 * POW($R1R2,3)) - (13.302875 * POW($R1R2,4)));
     }
 
     function Main($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
@@ -118,8 +118,8 @@ class MPUCWPSO
 
         //2. Jika kedua partikel tidak sama maka bandingkan keduanya. Ambil yang terkecil
         $counter = 0;
-        while ($counter < $max_counter){
-            if ($CPbestIndex1 == $CPbestIndex2){
+        while ($counter < $max_counter) {
+            if ($CPbestIndex1 == $CPbestIndex2) {
                 $CPbestIndex1 = array_rand($Pbest);
                 $CPbestIndex2 = array_rand($Pbest);
                 $CPbest1 = $Pbest[$CPbestIndex1];
@@ -177,7 +177,7 @@ class MPUCWPSO
 
                 //Inertia weight
                 $random_zeroToOne = $this->randomZeroToOne();
-                $r[$iterasi] = 1.07 * ((7.86 * $random_zeroToOne) - (23.31 * POW(2, $random_zeroToOne)) + (28.75 * POW(3, $random_zeroToOne)) - (13.302875 * POW(4, $random_zeroToOne)));
+                $r[$iterasi] = 1.07 * ((7.86 * $random_zeroToOne) - (23.31 * POW($random_zeroToOne, 2)) + (28.75 * POW($random_zeroToOne, 3)) - (13.302875 * POW($random_zeroToOne, 4)));
 
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
@@ -253,8 +253,8 @@ class MPUCWPSO
                 $CPbest1 = $Pbest[$CPbestIndex1];
                 $CPbest2 = $Pbest[$CPbestIndex2];
 
-                while ($counter < $max_counter){
-                    if ($CPbestIndex1 == $CPbestIndex2){
+                while ($counter < $max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
                         $CPbestIndex1 = array_rand($Pbest);
                         $CPbestIndex2 = array_rand($Pbest);
                         $CPbest1 = $Pbest[$CPbestIndex1];
@@ -285,11 +285,11 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
-                $R1[$iterasi] = $this->chaoticR1R2($R1[$iterasi-1]);
-                $R2[$iterasi] = $this->chaoticR1R2($R2[$iterasi-1]);
+                $R1[$iterasi] = $this->chaoticR1R2($R1[$iterasi - 1]);
+                $R2[$iterasi] = $this->chaoticR1R2($R2[$iterasi - 1]);
 
                 //Inertia weight
-                $r[$iterasi] = 1.07 * ((7.86 * $r[$iterasi - 1]) - (23.31 * POW(2, $r[$iterasi - 1])) + (28.75 * POW(3, $r[$iterasi - 1])) - (13.302875 * POW(4, $r[$iterasi - 1])));
+                $r[$iterasi] = 1.07 * ((7.86 * $r[$iterasi - 1]) - (23.31 * POW($r[$iterasi - 1], 2)) + (28.75 * POW($r[$iterasi - 1], 3)) - (13.302875 * POW($r[$iterasi - 1], 4)));
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
@@ -361,8 +361,8 @@ class MPUCWPSO
                 $CPbest1 = $Pbest[$CPbestIndex1];
                 $CPbest2 = $Pbest[$CPbestIndex2];
 
-                while ($counter < $max_counter){
-                    if ($CPbestIndex1 == $CPbestIndex2){
+                while ($counter < $max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
                         $CPbestIndex1 = array_rand($Pbest);
                         $CPbestIndex2 = array_rand($Pbest);
                         $CPbest1 = $Pbest[$CPbestIndex1];
@@ -437,7 +437,6 @@ class MPUCWPSO
         }
         return ($ae / count($dataset));
     }
-
 }
 
 /**
@@ -552,7 +551,8 @@ for ($max_iter = 1; $max_iter <= $MAX_ITER; $max_iter++) {
 
     //convert to txt
     $data = array($bestMAE);
-    $fp = fopen('hasil_mpso_singer.txt', 'a');
+    $fp = fopen('hasil_cmpso_singer.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }
+

@@ -1,5 +1,5 @@
 <?php
-set_time_limit(100000);
+set_time_limit(10000);
 
 class MPUCWPSO
 {
@@ -203,8 +203,8 @@ class MPUCWPSO
         $CPbest2 = $Pbest[$CPbestIndex2];
 
         $counter = 0;
-        while($counter < $max_counter){
-            if ($CPbestIndex1 == $CPbestIndex2){
+        while ($counter < $max_counter) {
+            if ($CPbestIndex1 == $CPbestIndex2) {
                 $CPbestIndex1 = array_rand($Pbest);
                 $CPbestIndex2 = array_rand($Pbest);
                 $CPbest1 = $Pbest[$CPbestIndex1];
@@ -255,20 +255,16 @@ class MPUCWPSO
         ##Masuk Iterasi
         $iterasi = 0;
         while ($iterasi <= $max_iter - 1) {
-            $random_R1 = $this->randomZeroToOne();
-            $random_R2 = $this->randomZeroToOne();
-            $R1[$iterasi] = fmod($random_R1 + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_R1), 1);
-            $R2[$iterasi] = fmod($random_R2 + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_R2), 1);
 
             if ($iterasi == 0) {
+                $R1[$iterasi] = sin(pi() * 0.7);
+                $R2[$iterasi] = sin(pi() * 0.7);
                 //Inertia weight
-                $random_zeroToOne = $this->randomZeroToOne();
-                $r[$iterasi] = fmod($random_zeroToOne + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $random_zeroToOne), 1);
+                $r[$iterasi] = sin(pi() * 0.7);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
-
                     $vInitial = $this->randomZeroToOne();
 
                     //Simple
@@ -344,8 +340,8 @@ class MPUCWPSO
                 $CPbest2 = $Pbest[$CPbestIndex2];
 
                 $counter = 0;
-                while($counter < $max_counter){
-                    if ($CPbestIndex1 == $CPbestIndex2){
+                while ($counter < $max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
                         $CPbestIndex1 = array_rand($Pbest);
                         $CPbestIndex2 = array_rand($Pbest);
                         $CPbest1 = $Pbest[$CPbestIndex1];
@@ -374,17 +370,16 @@ class MPUCWPSO
                     }
                     //echo 'Tidak sama &nbsp<br>';
                 }
-
                 $SPbest = $Pbest;
             } // End of iterasi==0
+
+            $R1[$iterasi] = (2.3 * POW($R1[$iterasi-1],2)) * sin(pi() * $R1[$iterasi-1]);
+            $R2[$iterasi] = (2.3 * POW($R1[$iterasi-1],2)) * sin(pi() * $R1[$iterasi-1]);
+            //Inertia weight
+            $r[$iterasi] = (2.3 * POW($r[$iterasi-1],2)) * sin(pi() * $r[$iterasi-1]);
+            $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
+            
             if ($iterasi != 0) {
-                $R1[$iterasi] = fmod($R1[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $R1[$iterasi-1]), 1);
-                $R2[$iterasi] = fmod($R2[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $R2[$iterasi-1]), 1);
-
-                //Inertia weight
-                $r[$iterasi] = fmod($r[$iterasi-1] + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $r[$iterasi-1]), 1);
-                $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
-
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     //Simple
@@ -447,15 +442,22 @@ class MPUCWPSO
                     }
                 }
                 $GBest = $this->minimalAE($Pbest);
- 
+                //echo ' Gbest: ';
+                //print_r($GBest);
+                // print_r($partikel);
+                //echo '<br>';
+                // print_r($Pbest);
+                // echo '<p>';
+                // print_r($GBest);
+                //Fungsi SPbest
                 $CPbestIndex1 = array_rand($Pbest);
                 $CPbestIndex2 = array_rand($Pbest);
                 $CPbest1 = $Pbest[$CPbestIndex1];
                 $CPbest2 = $Pbest[$CPbestIndex2];
 
                 $counter = 0;
-                while($counter < $max_counter){
-                    if ($CPbestIndex1 == $CPbestIndex2){
+                while ($counter < $max_counter) {
+                    if ($CPbestIndex1 == $CPbestIndex2) {
                         $CPbestIndex1 = array_rand($Pbest);
                         $CPbestIndex2 = array_rand($Pbest);
                         $CPbest1 = $Pbest[$CPbestIndex1];
@@ -484,6 +486,7 @@ class MPUCWPSO
                     }
                     //echo 'Tidak sama &nbsp<br>';
                 }
+
                 $SPbest = $Pbest;
             } // End of iterasi > 0
 
@@ -530,7 +533,6 @@ class MPUCWPSO
         }
         return ($ae / count($dataset));
     }
-
 }
 
 /**
@@ -644,8 +646,8 @@ for ($max_iter = 1; $max_iter <= $MAX_ITER; $max_iter++) {
     echo '<br>';
 
     //convert to txt
-    $data = array($max_iter,$bestMAE);
-    $fp = fopen('hasil_mpso_circle.txt', 'a');
+    $data = array($bestMAE);
+    $fp = fopen('hasil_cmpso_sinusoidal.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }

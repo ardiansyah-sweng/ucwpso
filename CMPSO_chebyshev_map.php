@@ -77,11 +77,6 @@ class MPUCWPSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
-    function chaoticR1R2($iterasi)
-    {
-        return cos($iterasi * cos(pow(-1, $this->randomZeroToOne())));
-    }
-
     function Main($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
     {
         ##Generate Population
@@ -156,28 +151,27 @@ class MPUCWPSO
         ##Masuk Iterasi
         $iterasi = 0;
         while ($iterasi <= $max_iter - 1) {
-            $R1 = $this->chaoticR1R2($iterasi);
-            $R2 = $this->chaoticR1R2($iterasi);
-
             if ($iterasi == 0) {
+                $R1[$iterasi] = cos($iterasi * cos(pow($this->randomZeroToOne(), -1)));
+                $R2[$iterasi] = cos($iterasi * cos(pow($this->randomZeroToOne(), -1)));
                 //Inertia weight
                 $random_zeroToOne = $this->randomZeroToOne();
-                $r[$iterasi] = cos($iterasi * cos(pow(-1, $random_zeroToOne)));
+                $r[$iterasi] = cos($iterasi * cos(pow($random_zeroToOne, -1)));
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     $vInitial = $this->randomZeroToOne();
                     //Simple
-                    $vSimple = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xSimple'] - $partikelAwal[$i]['xSimple'])) + (($this->C2 * $R2) * ($GBest['xSimple'] - $partikelAwal[$i]['xSimple']));
+                    $vSimple = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikelAwal[$i]['xSimple'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xSimple'] - $partikelAwal[$i]['xSimple']));
                     $xSimple = $partikelAwal[$i]['xSimple'] + $vSimple;
 
                     //Average
-                    $vAverage = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xAverage'] - $partikelAwal[$i]['xAverage'])) + (($this->C2 * $R2) * ($GBest['xAverage'] - $partikelAwal[$i]['xAverage']));
+                    $vAverage = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikelAwal[$i]['xAverage'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xAverage'] - $partikelAwal[$i]['xAverage']));
                     $xAverage = $partikelAwal[$i]['xAverage'] + $vAverage;
 
                     //Complex
-                    $vComplex = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xComplex'] - $partikelAwal[$i]['xComplex'])) + (($this->C2 * $R2) * ($GBest['xComplex'] - $partikelAwal[$i]['xComplex']));
+                    $vComplex = ($w * $vInitial) + (($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikelAwal[$i]['xComplex'])) + (($this->C2 * $R2[$iterasi]) * ($GBest['xComplex'] - $partikelAwal[$i]['xComplex']));
                     $xComplex = $partikelAwal[$i]['xComplex'] + $vComplex;
 
                     //exceeding limit
@@ -299,22 +293,25 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
+                $R1[$iterasi] = cos($iterasi * cos(pow($R1[$iterasi-1], -1)));
+                $R2[$iterasi] = cos($iterasi * cos(pow($R2[$iterasi-1], -1)));
+
                 //Inertia weight
-                $r[$iterasi] = cos($iterasi * cos(POW(-1, $r[$iterasi - 1])));
+                $r[$iterasi] = cos($iterasi * cos(POW($r[$iterasi - 1],-1)));
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     //Simple
-                    $vSimple = ($w * $partikel[$iterasi - 1][$i]['vSimple']) + ($this->C1 * $R1) * ($SPbest[$i]['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']) + ($this->C2 * $R2) * ($GBest['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']);
+                    $vSimple = ($w * $partikel[$iterasi - 1][$i]['vSimple']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']);
                     $xSimple = $partikel[$iterasi - 1][$i]['xSimple'] + $vSimple;
 
                     //Average
-                    $vAverage = ($w * $partikel[$iterasi - 1][$i]['vAverage']) + ($this->C1 * $R1) * ($SPbest[$i]['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']) + ($this->C2 * $R2) * ($GBest['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']);
+                    $vAverage = ($w * $partikel[$iterasi - 1][$i]['vAverage']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']);
                     $xAverage = $partikel[$iterasi - 1][$i]['xAverage'] + $vAverage;
 
                     //Complex
-                    $vComplex = ($w * $partikel[$iterasi - 1][$i]['vComplex']) + ($this->C1 * $R1) * ($SPbest[$i]['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']) + ($this->C2 * $R2) * ($GBest['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']);
+                    $vComplex = ($w * $partikel[$iterasi - 1][$i]['vComplex']) + ($this->C1 * $R1[$iterasi]) * ($SPbest[$i]['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']) + ($this->C2 * $R2[$iterasi]) * ($GBest['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']);
                     $xComplex = $partikel[$iterasi - 1][$i]['xComplex'] + $vComplex;
 
                     //exceeding limit

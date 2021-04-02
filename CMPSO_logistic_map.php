@@ -306,6 +306,7 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
+                
                 //Inertia weight
                 $r[$iterasi] = (4 * $r[$iterasi - 1]) * (1 - $r[$iterasi - 1]);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
