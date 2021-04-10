@@ -77,6 +77,23 @@ class PSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
+    function averageTwoDimensionalArray($data, $column)
+    {
+        $data_size = count($data);
+        return array_sum(array_column($data, $column)) / $data_size;
+    }
+
+    function diversity($particles)
+    {
+        $mean_xSimple = $this->averageTwoDimensionalArray($particles, 'xSimple');
+        $mean_xAverage = $this->averageTwoDimensionalArray($particles, 'xAverage');
+        $mean_xComplex = $this->averageTwoDimensionalArray($particles, 'xComplex');
+        foreach ($particles as $position) {
+            $diversity_rate[] = sqrt(pow($position['xSimple'] - $mean_xSimple, 2) + pow($position['xAverage'] - $mean_xAverage, 2) + pow($position['xComplex'] - $mean_xComplex, 2));
+        }
+        return array_sum($diversity_rate) / count($particles);
+    }
+
     function Main($dataset, $max_iter, $SWARM_SIZE, $limit_percentage)
     {
         ##Generate Population
@@ -113,9 +130,10 @@ class PSO
 
         ##Masuk Iterasi
         $iterasi = 0;
+        $diversities = [];
         while ($iterasi <= $max_iter - 1) {
             //Inertia weight
-            $w = $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
+            $w = $this->INERTIA_MIN - ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
             if ($iterasi == 0) {
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $SWARM_SIZE - 1; $i++) {
@@ -167,6 +185,8 @@ class PSO
                     $partikel[$iterasi][$i]['vAverage'] = $vAverage;
                     $partikel[$iterasi][$i]['vComplex'] = $vComplex;
                 } //End of particle loop
+
+                //$diversities[$iterasi] = $this->diversity($partikel[$iterasi]);
 
                 //bandingan Partikel_i(t) dengan PBest_i(t-1)
                 foreach ($partikel as $val) {
@@ -236,6 +256,9 @@ class PSO
                     $partikel[$iterasi][$i]['vAverage'] = $vAverage;
                     $partikel[$iterasi][$i]['vComplex'] = $vComplex;
                 }
+
+                $diversities[$iterasi] = $this->diversity($partikel[$iterasi]);
+
                 //bandingan Partikel_i(t) dengan PBest_i(t-1)
                 foreach ($partikel as $val) {
                     foreach ($val as $key => $x) {
@@ -245,13 +268,14 @@ class PSO
                     }
                 }
                 $GBest = $this->minimalAE($Pbest);
+                print_r($diversities);
             } // End of iterasi > 0
 
             ##Evaluate fitness value
             if ($GBest['ae'] > $this->FITNESS_VALUE_BASELINE['polynomial']) {
                 $temp[] = $GBest;
             } else {
-                return $GBest;
+                return array_push($GBest,$diversities);
             }
             $iterasi++;
         } // End of iterasi
@@ -358,20 +382,6 @@ $dataset = array(
     array('simpleUC' => 5, 'averageUC' => 18, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5775)
 );
 
-//MEDIUM
-// $dataset = array(
-//     array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
-//     array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
-//     array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
-//     array('simpleUC' => 1, 'averageUC' => 11, 'complexUC' => 11, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6232),
-//     array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6173),
-//     array('simpleUC' => 2, 'averageUC' => 13, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 6062), 
-//     array('simpleUC' => 1, 'averageUC' => 19, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6024),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 8, 'uaw' => 6, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5927),
-//     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
-// );
-
 $MAX_ITER = 40;
 $MAX_TRIAL = 1000;
 $numDataset = count($dataset);
@@ -412,9 +422,9 @@ $bestMAE = min($maes);
 //find index bestMAE
 $bestMAEIndex = array_search($bestMAE, $maes);
 //print final result and save to txt
-echo 'Best MAE: '. $bestMAE;
+echo 'Best MAE: ' . $bestMAE;
 echo '<br>';
-foreach ($results[$bestMAEIndex] as $val){
+foreach ($results[$bestMAEIndex] as $val) {
     echo $val['estimatedEffort'] . ' | ' . $val['ae'];
     echo '<br>';
     $data = array($val['estimatedEffort'], $val['ae']);

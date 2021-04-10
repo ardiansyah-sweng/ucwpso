@@ -77,25 +77,25 @@ class MPUCWPSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
-    function chaoticR1R2($R1R2)
+    function chaoticPiecewise($value)
     {
         $P = mt_rand(0.01 * 100, 0.5 * 100) / 100;
 
         //P >= r[iterasi] >= 0
-        if ($R1R2 >= 0 && $R1R2 <= $P) {
-            return $R1R2 / $P;
+        if ($value >= 0 && $value <= $P) {
+            return $value / $P;
         }
         // 0.5 >= r[$iterasi] >= P
-        if ($R1R2 >= $P && $R1R2 <= 0.5) {
-            return ($R1R2 - $P) / (0.5 - $P);
+        if ($value >= $P && $value <= 0.5) {
+            return ($value - $P) / (0.5 - $P);
         }
         //1-P >= r[$iterasi] >= 0.5
-        if ($R1R2 >= 0.5 && $R1R2 <= (1 - $P)) {
-            return (1 - $P - $R1R2) / (0.5 - $P);
+        if ($value >= 0.5 && $value <= (1 - $P)) {
+            return (1 - $P - $value) / (0.5 - $P);
         }
         //1 >= r[iterasi] >= 1-P
-        if ($R1R2 >= (1 - $P) && $R1R2 <= 1) {
-            return (1 - $R1R2) / $P;
+        if ($value >= (1 - $P) && $value <= 1) {
+            return (1 - $value) / $P;
         }
     }
 
@@ -188,30 +188,11 @@ class MPUCWPSO
         while ($iterasi <= $max_iter - 1) {
 
             if ($iterasi == 0) {
-                $R1[$iterasi] = $this->chaoticR1R2($this->randomZeroToOne());
-                $R2[$iterasi] = $this->chaoticR1R2($this->randomZeroToOne());
+                $R1[$iterasi] = $this->chaoticPiecewise(0.7);
+                $R2[$iterasi] = $this->chaoticPiecewise(0.7);
 
                 //Inertia weight
-                $random_zeroToOne = $this->randomZeroToOne();
-                //while P != 0
-                $P = mt_rand(0.01 * 100, 0.5 * 100) / 100;
-
-                //P >= r[iterasi] >= 0
-                if ($random_zeroToOne >= 0 && $random_zeroToOne <= $P) {
-                    $r[$iterasi] = $random_zeroToOne / $P;
-                }
-                // 0.5 >= r[$iterasi] >= P
-                if ($random_zeroToOne >= $P && $random_zeroToOne <= 0.5) {
-                    $r[$iterasi] = ($random_zeroToOne - $P) / (0.5 - $P);
-                }
-                //1-P >= r[$iterasi] >= 0.5
-                if ($random_zeroToOne >= 0.5 && $random_zeroToOne <= (1 - $P)) {
-                    $r[$iterasi] = (1 - $P - $random_zeroToOne) / (0.5 - $P);
-                }
-                //1 >= r[iterasi] >= 1-P
-                if ($random_zeroToOne >= (1 - $P) && $random_zeroToOne <= 1) {
-                    $r[$iterasi] = (1 - $random_zeroToOne) / $P;
-                }
+                $r[$iterasi] = $this->chaoticPiecewise(0.7);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
@@ -326,29 +307,11 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
-                $R1[$iterasi] = $this->chaoticR1R2($R1[$iterasi-1]);
-                $R2[$iterasi] = $this->chaoticR1R2($R2[$iterasi-1]);
+                $R1[$iterasi] = $this->chaoticPiecewise($R1[$iterasi-1]);
+                $R2[$iterasi] = $this->chaoticPiecewise($R2[$iterasi-1]);
+
                 //Inertia weight
-
-                //while P != 0
-                $P = mt_rand(0.01 * 100, 0.5 * 100) / 100;
-
-                //P >= r[iterasi] >= 0
-                if ($r[$iterasi - 1] >= 0 && $r[$iterasi - 1] <= $P) {
-                    $r[$iterasi] = $r[$iterasi - 1] / $P;
-                }
-                // 0.5 >= r[$iterasi] >= P
-                if ($r[$iterasi - 1] >= $P && $r[$iterasi - 1] <= 0.5) {
-                    $r[$iterasi] = ($r[$iterasi - 1] - $P) / (0.5 - $P);
-                }
-                //1-P >= r[$iterasi] >= 0.5
-                if ($r[$iterasi - 1] >= 0.5 && $r[$iterasi - 1] <= (1 - $P)) {
-                    $r[$iterasi] = (1 - $P - $r[$iterasi - 1]) / (0.5 - $P);
-                }
-                //1 >= r[iterasi] >= 1-P
-                if ($r[$iterasi - 1] >= (1 - $P) && $r[$iterasi - 1] <= 1) {
-                    $r[$iterasi] = (1 - $r[$iterasi - 1]) / $P;
-                }
+                $r[$iterasi] = $this->chaoticPiecewise($r[$iterasi-1]);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi

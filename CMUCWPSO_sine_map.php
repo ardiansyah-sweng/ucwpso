@@ -77,10 +77,10 @@ class MPUCWPSO
         return $arrPartikel[array_search(min($ae), $ae)];
     }
 
-    function chaoticR1R2($R1R2)
+    function chaoticSine($value)
     {
-        $random_a = mt_rand(0.1 * 100, 4.0 * 100) / 100;
-        return ($random_a / 4) * sin(pi() * $R1R2);
+        //$random_a = mt_rand(0.1 * 100, 4.0 * 100) / 100;
+        return sin(pi() * $value);
     }
 
     function Main($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
@@ -171,13 +171,11 @@ class MPUCWPSO
         $iterasi = 0;
         while ($iterasi <= $max_iter - 1) {
             if ($iterasi == 0) {
-                $R1[$iterasi] = $this->chaoticR1R2($this->randomZeroToOne());
-                $R2[$iterasi] = $this->chaoticR1R2($this->randomZeroToOne());
+                $R1[$iterasi] = $this->chaoticSine($this->randomZeroToOne());
+                $R2[$iterasi] = $this->chaoticSine($this->randomZeroToOne());
 
                 //Inertia weight
-                $random_zeroToOne = $this->randomZeroToOne();
-                $random_a = mt_rand(0.1 * 100, 4.0 * 100) / 100;
-                $r[$iterasi] = ($random_a / 4) * sin(pi() * $random_zeroToOne);
+                $r[$iterasi] = $this->chaoticSine($this->randomZeroToOne());
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
@@ -291,11 +289,10 @@ class MPUCWPSO
                 $SPbest = $Pbest;
             } // End of iterasi==0
             if ($iterasi != 0) {
-                $R1[$iterasi] = $this->chaoticR1R2($R1[$iterasi-1]);
-                $R2[$iterasi] = $this->chaoticR1R2($R2[$iterasi-1]);
+                $R1[$iterasi] = $this->chaoticSine($R1[$iterasi-1]);
+                $R2[$iterasi] = $this->chaoticSine($R2[$iterasi-1]);
                 //Inertia weight
-                $random_a = mt_rand(0.1 * 100, 4.0 * 100) / 100;
-                $r[$iterasi] = ($random_a / 4) * sin(pi() * $r[$iterasi - 1]);
+                $r[$iterasi] = $this->chaoticSine($r[$iterasi - 1]);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
@@ -531,20 +528,6 @@ $dataset = array(
     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
     array('simpleUC' => 5, 'averageUC' => 18, 'complexUC' => 17, 'uaw' => 18, 'tcf' => 0.85, 'ecf' => 0.89, 'actualEffort' => 5775)
 );
-
-//MEDIUM
-// $dataset = array(
-//     array('simpleUC' => 0, 'averageUC' => 17, 'complexUC' => 8, 'uaw' => 7, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6474),
-//     array('simpleUC' => 1, 'averageUC' => 13, 'complexUC' => 10, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.79, 'actualEffort' => 6416),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 10, 'uaw' => 8, 'tcf' => 0.94, 'ecf' => 1.02, 'actualEffort' => 6412),
-//     array('simpleUC' => 1, 'averageUC' => 10, 'complexUC' => 12, 'uaw' => 7, 'tcf' => 0.71, 'ecf' => 0.73, 'actualEffort' => 6360),
-//     array('simpleUC' => 1, 'averageUC' => 11, 'complexUC' => 11, 'uaw' => 7, 'tcf' => 0.78, 'ecf' => 0.51, 'actualEffort' => 6232),
-//     array('simpleUC' => 1, 'averageUC' => 14, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 1.03, 'ecf' => 0.8, 'actualEffort' => 6173),
-//     array('simpleUC' => 2, 'averageUC' => 13, 'complexUC' => 9, 'uaw' => 7, 'tcf' => 0.75, 'ecf' => 0.81, 'actualEffort' => 6062), 
-//     array('simpleUC' => 1, 'averageUC' => 19, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 0.965, 'ecf' => 0.755, 'actualEffort' => 6024),
-//     array('simpleUC' => 0, 'averageUC' => 14, 'complexUC' => 8, 'uaw' => 6, 'tcf' => 0.98, 'ecf' => 0.97, 'actualEffort' => 5927),
-//     array('simpleUC' => 5, 'averageUC' => 15, 'complexUC' => 5, 'uaw' => 6, 'tcf' => 1, 'ecf' => 0.92, 'actualEffort' => 5778),
-// );
 
 $MAX_ITER = 40;
 $MAX_TRIAL = 1000;

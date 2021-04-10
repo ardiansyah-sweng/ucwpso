@@ -64,95 +64,8 @@ class MPUCWPSO
         return mt_rand($MIN * 100, $MAX * 100) / 100;
     }
 
-    /**
-     * Fungsi Stochastic PBest
-     * Parameter: arrPartikel
-     * Return: arrSPBest[posisi, ae, estimated effort]
-     */
-    function SPBest($partikel)
-    {
-        $i = 0;
-        $CPbestIndex1 = array_rand($partikel);
-        $CPbestIndex2 = array_rand($partikel);
-        $CPbest1 = $partikel[$CPbestIndex1];
-        $CPbest2 = $partikel[$CPbestIndex2];
-        // echo '<p>Master<br>';
-        // print_r($CPbest1);
-        // echo '<br>';
-        // print_r($CPbest2);
-        // echo '<p>';
-
-        if ($CPbestIndex1 != $CPbestIndex2) {
-            if ($CPbest1['ae'] < $CPbest2['ae']) {
-                $CPbest = $CPbest1;
-            }
-            if ($CPbest1['ae'] > $CPbest2['ae']) {
-                $CPbest = $CPbest2;
-            }
-        }
-        // echo 'Tingkat 1<br>';
-        // print_r($CPbest);
-        // echo '<br>';
-
-        for ($i = 0; $i <= 10; $i++) {
-            $CPbestIndex1 = array_rand($partikel);
-            $CPbestIndex2 = array_rand($partikel);
-            $CPbest1 = $partikel[$CPbestIndex1];
-            $CPbest2 = $partikel[$CPbestIndex2];
-            if ($CPbestIndex1 != $CPbestIndex2) {
-                if ($CPbest1['ae'] < $CPbest2['ae']) {
-                    $CPbest = $CPbest1;
-                }
-                if ($CPbest1['ae'] > $CPbest2['ae']) {
-                    $CPbest = $CPbest2;
-                }
-                break;
-            }
-            // echo '<br>Tingkat 2<br>';
-            // print_r($CPbest);
-            // echo '<br>';
-            // print_r($CPbest1);
-            // echo '<br>';
-            // print_r($CPbest2);
-            // echo '<p>';
-        }
-
-
-
-        //while ($i < count($partikel)) {
-        //Ambil acak 2 partikel dari populasi
-        //Pilih yang AE terkecil
-        //Yang terpilih menjadi CPbest
-        //     if ($CPbestIndex1 == $CPbestIndex2) {
-        //         $CPbestIndex1 = array_rand($partikel);
-        //         $CPbestIndex2 = array_rand($partikel);
-        //         $CPbest1 = $partikel[$CPbestIndex1];
-        //         $CPbest2 = $partikel[$CPbestIndex2];
-        //         $i = 0;
-        //         echo $CPbest1.'gak ada'.$CPbest2;
-        //     }
-        //     if ($CPbestIndex1 != $CPbestIndex2) {
-        //         if ($CPbest1['ae'] < $CPbest2['ae']) {
-        //             $CPbest = $CPbest1;
-        //         }
-        //         if ($CPbest1['ae'] > $CPbest2['ae']) {
-        //             $CPbest = $CPbest2;
-        //         }
-        //         break;
-        //     }
-        // }
-        //print_r($CPbest);
-
-        //Bandingkan CPbest dengan Pbest tiap partikel
-        foreach ($partikel as $val) {
-            if ($CPbest['ae'] < $val['ae']) {
-                $ret[] = $CPbest;
-            }
-            if ($CPbest['ae'] > $val['ae'] || ($CPbest['ae'] == $val['ae'])) {
-                $ret[] = $val;
-            }
-        }
-        return $ret;
+    function chaoticSinusoidal($value){
+        return (2.3 * POW($value,2)) * sin(pi() * $value);
     }
 
     /**
@@ -257,10 +170,10 @@ class MPUCWPSO
         while ($iterasi <= $max_iter - 1) {
 
             if ($iterasi == 0) {
-                $R1[$iterasi] = sin(pi() * 0.7);
-                $R2[$iterasi] = sin(pi() * 0.7);
+                $R1[$iterasi] = $this->chaoticSinusoidal(0.7);
+                $R2[$iterasi] = $this->chaoticSinusoidal(0.7);
                 //Inertia weight
-                $r[$iterasi] = sin(pi() * 0.7);
+                $r[$iterasi] = $this->chaoticSinusoidal(0.7);
                 $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
 
                 //Update Velocity dan X_Posisi
@@ -372,14 +285,14 @@ class MPUCWPSO
                 }
                 $SPbest = $Pbest;
             } // End of iterasi==0
-
-            $R1[$iterasi] = (2.3 * POW($R1[$iterasi-1],2)) * sin(pi() * $R1[$iterasi-1]);
-            $R2[$iterasi] = (2.3 * POW($R1[$iterasi-1],2)) * sin(pi() * $R1[$iterasi-1]);
-            //Inertia weight
-            $r[$iterasi] = (2.3 * POW($r[$iterasi-1],2)) * sin(pi() * $r[$iterasi-1]);
-            $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
-            
+           
             if ($iterasi != 0) {
+                $R1[$iterasi] = $this->chaoticSinusoidal($R1[$iterasi-1]);
+                $R2[$iterasi] = $this->chaoticSinusoidal($R2[$iterasi-1]);
+                //Inertia weight
+                $r[$iterasi] = $this->chaoticSinusoidal($r[$iterasi-1]);
+                $w = $r[$iterasi] * $this->INERTIA_MIN + ((($this->INERTIA_MAX - $this->INERTIA_MIN) * $iterasi) / $max_iter);
+
                 //Update Velocity dan X_Posisi
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     //Simple
