@@ -1,4 +1,5 @@
 <?php
+set_time_limit(1000000);
 
 class ParticleSwarmOptimizer
 {
@@ -11,8 +12,9 @@ class ParticleSwarmOptimizer
     protected $stopping_value;
     protected $dataset;
     protected $productivity_factor;
+    protected $MAX_COUNTER;
 
-    function __construct($swarm_size, $C1, $C2, $max_iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor)
+    function __construct($swarm_size, $C1, $C2, $max_iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $max_counter)
     {
         $this->swarm_size = $swarm_size;
         $this->C1 = $C1;
@@ -23,6 +25,7 @@ class ParticleSwarmOptimizer
         $this->stopping_value = $stopping_value;
         $this->dataset = $dataset;
         $this->productivity_factor = $productivity_factor;
+        $this->MAX_COUNTER = $max_counter;
     }
 
     function randomZeroToOne()
@@ -85,92 +88,212 @@ class ParticleSwarmOptimizer
         return $UUCP * $tcf * $ecf;
     }
 
+    function velocity($inertia, $R1, $R2, $velocity, $position, $Pbest, $Gbest)
+    {
+        return $inertia * $velocity + ($this->C1 * $R1) * ($Pbest - $position) + ($this->C2 * $R2) * ($Gbest - $position);
+    }
+
+    function sine($chaos_value)
+    {
+        return sin(pi() * $chaos_value);
+    }
+
     function findSolution($project)
     {
         $vMaxSimple = 2.49;
         $vMaxAverage = 4.99;
         $vMaxComplex = 2.5;
 
-        for ($iteration = 0; $iteration <= $this->max_iteration; $iteration++) {
-            $R1 = $this->randomZeroToOne();
-            $R2 = $this->randomZeroToOne();
-            $inertia = $this->max_inertia - (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
+        ## Generate population
+        for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
+            $xSimple = $this->randomSimpleUCWeight();
+            $xAverage = $this->randomAverageUCWeight();
+            $xComplex = $this->randomComplexUCWeight();
 
-            ## Generate population
-            if ($iteration === 0) {
-                for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
-                    $xSimple = $this->randomSimpleUCWeight();
-                    $xAverage = $this->randomAverageUCWeight();
-                    $xComplex = $this->randomComplexUCWeight();
+            $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+            $esimated_effort = $UCP * $this->productivity_factor;
+            $initial_particles[$i]['estimatedEffort'] = $esimated_effort;
+            $initial_particles[$i]['ucp'] = $UCP;
+            $initial_particles[$i]['ae'] = abs($esimated_effort - $project['actualEffort']);
+            $initial_particles[$i]['xSimple'] = $xSimple;
+            $initial_particles[$i]['xAverage'] = $xAverage;
+            $initial_particles[$i]['xComplex'] = $xComplex;
+        } ## End Generate Population
 
-                    $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+        for ($iteration = 0; $iteration <= $this->max_iteration - 1; $iteration++) {
 
-                    $particles[$iteration][$i]['estimatedEffort'] = $UCP * $this->productivity_factor;
-                    $particles[$iteration][$i]['ae'] = abs($particles[$iteration][$i]['estimatedEffort'] - $project['actualEffort']);
-                    $particles[$iteration][$i]['vSimple'] = $this->randomZeroToOne();
-                    $particles[$iteration][$i]['vAverage'] = $this->randomZeroToOne();
-                    $particles[$iteration][$i]['vComplex'] = $this->randomZeroToOne();
-                    $particles[$iteration][$i]['xSimple'] = $xSimple;
-                    $particles[$iteration][$i]['xAverage'] = $xAverage;
-                    $particles[$iteration][$i]['xComplex'] = $xComplex;
-                }
-                $Pbest = $particles[$iteration];
-                $Gbest = $this->minimalAE($particles[$iteration]);
-            }
+            for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
 
-            if ($iteration != 0) {
-                foreach ($particles[$iteration - 1] as $key => $particle) {
+                if ($iteration === 0) {
+                    $Gbest_initial = $this->minimalAE($initial_particles);
 
-                    $vSimple = $inertia * $particle['vSimple'] + $this->C1 * $R1 * ($Pbest[$key]['xSimple'] - $particle['xSimple'])  + $this->C2 * $R2 * ($Gbest['xSimple'] - $particle['xSimple']);
-                    $vAverage = $inertia * $particle['vAverage'] + $this->C1 * $R1 * ($Pbest[$key]['xAverage'] - $particle['xAverage']) + $this->C2 * $R2 * ($Gbest['xAverage'] - $particle['xAverage']);
-                    $vComplex = $inertia * $particle['vComplex'] + $this->C1 * $R1 * ($Pbest[$key]['xComplex'] - $particle['xComplex']) + $this->C2 * $R2 * ($Gbest['xComplex'] - $particle['xComplex']);
+                    $R1[$iteration] = $this->sine($this->randomZeroToOne());
+                    $R2[$iteration] = $this->sine($this->randomZeroToOne());
+                    $chaos_value[$iteration] = $this->sine($this->randomZeroToOne());
+                    $inertia[$iteration] = $chaos_value[$iteration] * $this->min_inertia + (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
 
-                    if ($vSimple > $vMaxSimple){
+                    $vSimple = $this->randomZeroToOne();
+                    $vAverage = $this->randomZeroToOne();
+                    $vComplex = $this->randomZeroToOne();
+
+                    $vSimple = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vSimple, $initial_particles[$i]['xSimple'], $initial_particles[$i]['xSimple'], $Gbest_initial['xSimple']);
+                    if ($vSimple > $vMaxSimple) {
                         $vSimple = $vMaxSimple;
                     }
-                    if ($vAverage > $vMaxAverage){
+                    $vAverage = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vAverage, $initial_particles[$i]['xAverage'], $initial_particles[$i]['xAverage'], $Gbest_initial['xAverage']);
+                    if ($vAverage > $vMaxAverage) {
                         $vAverage = $vMaxAverage;
                     }
-                    if ($vComplex > $vMaxComplex){
+                    $vComplex = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vComplex, $initial_particles[$i]['xComplex'], $initial_particles[$i]['xComplex'], $Gbest_initial['xComplex']);
+                    if ($vComplex > $vMaxComplex) {
                         $vComplex = $vMaxComplex;
                     }
 
-                    $xSimple = $particle['xSimple'] + $vSimple;
-                    $xAverage = $particle['xAverage'] + $vAverage;
-                    $xComplex = $particle['xComplex'] + $vComplex;
+                    $xSimple = $initial_particles[$i]['xSimple'] + $vSimple;
+                    $xAverage = $initial_particles[$i]['xAverage'] + $vAverage;
+                    $xComplex = $initial_particles[$i]['xComplex'] + $vComplex;
 
                     $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+                    $esimated_effort = $UCP * $this->productivity_factor;
 
-                    $particles[$iteration][$key]['estimatedEffort'] = $UCP * $this->productivity_factor;
-                    $particles[$iteration][$key]['ae'] = abs($particles[$iteration][$key]['estimatedEffort'] - $project['actualEffort']);
-                    $particles[$iteration][$key]['vSimple'] = $vSimple;
-                    $particles[$iteration][$key]['vAverage'] = $vAverage;
-                    $particles[$iteration][$key]['vComplex'] = $vComplex;
-                    $particles[$iteration][$key]['xSimple'] = $xSimple;
-                    $particles[$iteration][$key]['xAverage'] = $xAverage;
-                    $particles[$iteration][$key]['xComplex'] = $xComplex;
+                    $particles[$iteration][$i]['estimatedEffort'] = $esimated_effort;
+                    $particles[$iteration][$i]['ucp'] = $UCP;
+                    $particles[$iteration][$i]['ae'] = abs($esimated_effort - $project['actualEffort']);
+                    $particles[$iteration][$i]['vSimple'] = $vSimple;
+                    $particles[$iteration][$i]['vAverage'] = $vAverage;
+                    $particles[$iteration][$i]['vComplex'] = $vComplex;
+                    $particles[$iteration][$i]['xSimple'] = $xSimple;
+                    $particles[$iteration][$i]['xAverage'] = $xAverage;
+                    $particles[$iteration][$i]['xComplex'] = $xComplex;
 
-                    if ($particle['ae'] < $particles[$iteration][$key]['ae']){
-                        $Pbest[$key]['xSimple'] = $particle['xSimple'];
-                        $Pbest[$key]['xAverage'] = $particle['xAverage'];
-                        $Pbest[$key]['xComplex'] = $particle['xComplex'];
+                    if ($initial_particles[$i]['ae'] > $particles[$iteration][$i]['ae']) {
+                        $Pbest[$iteration][] = $particles[$iteration][$i];
+                    }
+                    if ($initial_particles[$i]['ae'] < $particles[$iteration][$i]['ae']) {
+                        $Pbest[$iteration][] = $initial_particles[$i];
+                    }
+                } ## End iteration = 0
+
+                if ($iteration > 0) {
+                    $R1[$iteration] = $this->sine($R1[$iteration-1]);
+                    $R2[$iteration] = $this->sine($R2[$iteration-1]);
+                    $chaos_value[$iteration] = $this->sine($chaos_value[$iteration-1]);
+                    $inertia[$iteration] = $chaos_value[$iteration] * $this->min_inertia + (($this->max_inertia - $this->min_inertia) * $iteration / $this->max_iteration);
+
+                    $Gbest_simple = $Gbest[$iteration - 1]['xSimple'];
+                    $Gbest_average = $Gbest[$iteration - 1]['xAverage'];
+                    $Gbest_complex = $Gbest[$iteration - 1]['xComplex'];
+
+                    $Pbest_simple = $Pbest[$iteration - 1][$i]['xSimple'];
+                    $Pbest_average = $Pbest[$iteration - 1][$i]['xAverage'];
+                    $Pbest_complex = $Pbest[$iteration - 1][$i]['xComplex'];
+
+                    $vSimple = $particles[$iteration - 1][$i]['vSimple'];
+                    $vAverage = $particles[$iteration - 1][$i]['vAverage'];
+                    $vComplex = $particles[$iteration - 1][$i]['vComplex'];
+
+                    $xSimple = $particles[$iteration - 1][$i]['xSimple'];
+                    $xAverage = $particles[$iteration - 1][$i]['xAverage'];
+                    $xComplex = $particles[$iteration - 1][$i]['xComplex'];
+
+                    $vSimple = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vSimple, $xSimple, $Pbest_simple, $Gbest_simple);
+                    if ($vSimple > $vMaxSimple) {
+                        $vSimple = $vMaxSimple;
+                    }
+                    $vAverage = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vAverage, $xAverage, $Pbest_average, $Gbest_average);
+                    if ($vAverage > $vMaxAverage) {
+                        $vAverage = $vMaxAverage;
+                    }
+                    $vComplex = $this->velocity($inertia[$iteration], $R1[$iteration], $R2[$iteration], $vComplex, $xComplex, $Pbest_complex, $Gbest_complex);
+                    if ($vComplex > $vMaxAverage) {
+                        $vComplex = $vMaxAverage;
+                    }
+
+                    $xSimple = $initial_particles[$i]['xSimple'] + $vSimple;
+                    $xAverage = $initial_particles[$i]['xAverage'] + $vAverage;
+                    $xComplex = $initial_particles[$i]['xComplex'] + $vComplex;
+
+                    $UCP = $this->size($xSimple, $project['simpleUC'], $xAverage, $project['averageUC'], $xComplex, $project['complexUC'], $project['uaw'], $project['tcf'], $project['ecf']);
+                    $esimated_effort = $UCP * $this->productivity_factor;
+
+                    $particles[$iteration][$i]['estimatedEffort'] = $esimated_effort;
+                    $particles[$iteration][$i]['ucp'] = $UCP;
+                    $particles[$iteration][$i]['ae'] = abs($esimated_effort - $project['actualEffort']);
+                    $particles[$iteration][$i]['vSimple'] = $vSimple;
+                    $particles[$iteration][$i]['vAverage'] = $vAverage;
+                    $particles[$iteration][$i]['vComplex'] = $vComplex;
+                    $particles[$iteration][$i]['xSimple'] = $xSimple;
+                    $particles[$iteration][$i]['xAverage'] = $xAverage;
+                    $particles[$iteration][$i]['xComplex'] = $xComplex;
+
+                    if ($initial_particles[$i]['ae'] > $particles[$iteration][$i]['ae']) {
+                        $Pbest[$iteration][] = $particles[$iteration][$i];
+                    }
+                    if ($initial_particles[$i]['ae'] < $particles[$iteration][$i]['ae']) {
+                        $Pbest[$iteration][] = $initial_particles[$i];
+                    }
+                } ## End iteration > 0
+            } ## End of swarm size
+
+            ## Personal learning strategy
+            $SPbest = $Pbest[$iteration];
+            $CPbest1_index = array_rand($Pbest[$iteration]);
+            $CPbest2_index = array_rand($Pbest[$iteration]);
+            $CPbest1 = $Pbest[$iteration][$CPbest1_index];
+            $CPbest2 = $Pbest[$iteration][$CPbest2_index];
+            $counter = 0;
+            while ($counter < $this->MAX_COUNTER) {
+                if ($CPbest1_index == $CPbest2_index) {
+                    $CPbest1_index = array_rand($Pbest[$iteration]);
+                    $CPbest2_index = array_rand($Pbest[$iteration]);
+                    $CPbest1 = $Pbest[$iteration][$CPbest1_index];
+                    $CPbest2 = $Pbest[$iteration][$CPbest2_index];
+                    $counter = 0;
+                } else {
+                    break;
+                }
+            }
+            if ($CPbest1_index != $CPbest2_index) {
+                if ($CPbest1['ae'] < $CPbest2['ae']) {
+                    $CPbest = $CPbest1;
+                }
+                if ($CPbest1['ae'] > $CPbest2['ae']) {
+                    $CPbest = $CPbest2;
+                }
+                if ($CPbest1['ae'] == $CPbest2['ae']) {
+                    $CPbest = $CPbest2;
+                }
+                //compared CPbest with all Pbest_i(t-1)
+                foreach ($SPbest as $key => $pbest) {
+                    if ($CPbest['ae'] < $pbest['ae']) {
+                        $Pbest[$iteration][$key] = $CPbest;
                     }
                 }
-                $Gbest = $this->minimalAE($Pbest);
-                return $Gbest;
             }
-        }
-    }
+            ## End of personal learning strategy
+
+            $Gbest[$iteration] = $this->minimalAE($Pbest[$iteration]);
+            if ($Gbest[$iteration]['ae'] < $this->stopping_value) {
+                return $Gbest[$iteration];
+            }
+            $Gbests[] = $Gbest[$iteration];
+        } ## End of iteration
+
+        $minimal_AE = min(array_column($Gbests, 'ae'));
+        $index_minimal_AE = array_search($minimal_AE, array_column($Gbests, 'ae'));
+        return $Gbests[$index_minimal_AE];
+    } ## End of findSolution()
 
     function finishing()
     {
+        $sum = 0;
         foreach ($this->dataset as $project) {
-            $ret[] = $this->findSolution($project);
+            $result = $this->findSolution($project);
+            $sum += $result['ae'];
         }
-        return $ret;
+        return $sum / count($this->dataset);
     }
 }
-
 
 /**
  * Dataset 71 data point
@@ -253,11 +376,26 @@ $dataset = array(
 $swarm_size = 70;
 $C1 = 2;
 $C2 = 2;
-$max_iteration = 40;
+$MAX_ITERATION = 40;
 $max_inertia = 0.9;
 $min_inertia = 0.4;
-$stopping_value = 100;
+$stopping_value = 200;
+$trials = 1000;
 $productivity_factor = 20;
+$MAX_COUNTER = 100000;
 
-$optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $max_iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor);
-print_r($optimize->finishing());
+for ($iteration = 1; $iteration <= $MAX_ITERATION; $iteration++) {
+    for ($trial = 0; $trial <= $trials - 1; $trial++) {
+        $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER);
+        $absolute_errors[]  = $optimize->finishing();
+    }
+    $best_MAE = min($absolute_errors);
+    echo $iteration . ' == ' . $best_MAE . '<br>';
+
+    //convert to txt
+    $data = array($iteration,$best_MAE);
+    $fp = fopen('hasil_sine_convergence.txt', 'a');
+    fputcsv($fp, $data);
+    fclose($fp);
+    $absolute_errors = [];
+}

@@ -12,7 +12,7 @@ class MPUCWPSO
         'karner' => 1820,
         'nassif' => 1712,
         'ardiansyah' => 404.85,
-        'polynomial' => 238.11
+        'polynomial' => 200
     );
 
     private $INERTIA_MAX = 0.9;
@@ -187,6 +187,10 @@ class MPUCWPSO
      */
     function Main($dataset, $max_iter, $swarm_size, $max_counter, $limit_percentage)
     {
+        $vMaxSimple = 2.49;
+        $vMaxAverage = 4.99;
+        $vMaxComplex = 2.5;
+
         ##Generate Population
         for ($i = 0; $i <= $swarm_size - 1; $i++) {
             $xSimple = $this->randomSimpleUCWeight();
@@ -212,6 +216,7 @@ class MPUCWPSO
         //Pada generate partikel, Pbest sama dengan Partikel
         $Pbest = $partikelAwal;
         $GBest = $this->minimalAE($Pbest);
+        
         //Proses SPBest:
         //1. Ambil 2 partikel acak dari Pbest
         $CPbestIndex1 = array_rand($Pbest);
@@ -262,13 +267,6 @@ class MPUCWPSO
         //inisialisasi singer map chaotic inertia weight
         //$r0 = $this->randomNumber(number_format($this->randomZeroToOne(), 2));
 
-        //check if there are particles exceeds the lower or upper limit
-        $arrLimit = array(
-            'xSimple' => array('xSimpleMin' => (5 - (5 * $limit_percentage)), 'xSimpleMax' => (7.49 + (7.49 * $limit_percentage))),
-            'xAverage' => array('xAverageMin' => (7.5 - (7.5 * $limit_percentage)), 'xAverageMax' => (12.49 + (12.49 * $limit_percentage))),
-            'xComplex' => array('xComplexMin' => (12.5 - (12.5 * $limit_percentage)), 'xComplexMax' => (15 + (15 * $limit_percentage))),
-        );
-
         ##Masuk Iterasi
         $iterasi = 0;
         while ($iterasi <= $max_iter - 1) {
@@ -293,33 +291,20 @@ class MPUCWPSO
                     //Simple
                     $vSimple = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xSimple'] - $partikelAwal[$i]['xSimple'])) + (($this->C2 * $R2) * ($GBest['xSimple'] - $partikelAwal[$i]['xSimple']));
                     $xSimple = $partikelAwal[$i]['xSimple'] + $vSimple;
-
+                    if ($vSimple > $vMaxSimple) {
+                        $vSimple = $vMaxSimple;
+                    }
                     //Average
                     $vAverage = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xAverage'] - $partikelAwal[$i]['xAverage'])) + (($this->C2 * $R2) * ($GBest['xAverage'] - $partikelAwal[$i]['xAverage']));
                     $xAverage = $partikelAwal[$i]['xAverage'] + $vAverage;
-
+                    if ($vAverage > $vMaxAverage) {
+                        $vAverage = $vMaxAverage;
+                    }
                     //Complex
                     $vComplex = ($w * $vInitial) + (($this->C1 * $R1) * ($SPbest[$i]['xComplex'] - $partikelAwal[$i]['xComplex'])) + (($this->C2 * $R2) * ($GBest['xComplex'] - $partikelAwal[$i]['xComplex']));
                     $xComplex = $partikelAwal[$i]['xComplex'] + $vComplex;
-
-                    //exceeding limit
-                    if ($xSimple < $arrLimit['xSimple']['xSimpleMin']) {
-                        $xSimple = $arrLimit['xSimple']['xSimpleMin'];
-                    }
-                    if ($xSimple > $arrLimit['xSimple']['xSimpleMax']) {
-                        $xSimple = $arrLimit['xSimple']['xSimpleMax'];
-                    }
-                    if ($xAverage < $arrLimit['xAverage']['xAverageMin']) {
-                        $xAverage = $arrLimit['xAverage']['xAverageMin'];
-                    }
-                    if ($xAverage > $arrLimit['xAverage']['xAverageMax']) {
-                        $xAverage = $arrLimit['xAverage']['xAverageMax'];
-                    }
-                    if ($xComplex < $arrLimit['xComplex']['xComplexMin']) {
-                        $xComplex = $arrLimit['xComplex']['xComplexMin'];
-                    }
-                    if ($xComplex > $arrLimit['xComplex']['xComplexMax']) {
-                        $xComplex = $arrLimit['xComplex']['xComplexMax'];
+                    if ($vComplex > $vMaxComplex) {
+                        $vComplex = $vMaxComplex;
                     }
 
                     $ucSimple = $xSimple * $dataset['simpleUC'];
@@ -413,35 +398,25 @@ class MPUCWPSO
                 for ($i = 0; $i <= $swarm_size - 1; $i++) {
                     //Simple
                     $vSimple = ($w * $partikel[$iterasi - 1][$i]['vSimple']) + ($this->C1 * $R1) * ($SPbest[$i]['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']) + ($this->C2 * $R2) * ($GBest['xSimple'] - $partikel[$iterasi - 1][$i]['xSimple']);
+                    if ($vSimple > $vMaxSimple) {
+                        $vSimple = $vMaxSimple;
+                    }
                     $xSimple = $partikel[$iterasi - 1][$i]['xSimple'] + $vSimple;
 
                     //Average
                     $vAverage = ($w * $partikel[$iterasi - 1][$i]['vAverage']) + ($this->C1 * $R1) * ($SPbest[$i]['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']) + ($this->C2 * $R2) * ($GBest['xAverage'] - $partikel[$iterasi - 1][$i]['xAverage']);
+                    if ($vAverage > $vMaxAverage) {
+                        $vAverage = $vMaxAverage;
+                    }
                     $xAverage = $partikel[$iterasi - 1][$i]['xAverage'] + $vAverage;
 
                     //Complex
                     $vComplex = ($w * $partikel[$iterasi - 1][$i]['vComplex']) + ($this->C1 * $R1) * ($SPbest[$i]['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']) + ($this->C2 * $R2) * ($GBest['xComplex'] - $partikel[$iterasi - 1][$i]['xComplex']);
                     $xComplex = $partikel[$iterasi - 1][$i]['xComplex'] + $vComplex;
+                    if ($vComplex > $vMaxComplex) {
+                        $vComplex = $vMaxComplex;
+                    }
 
-                    //exceeding limit
-                    if ($xSimple < $arrLimit['xSimple']['xSimpleMin']) {
-                        $xSimple = $arrLimit['xSimple']['xSimpleMin'];
-                    }
-                    if ($xSimple > $arrLimit['xSimple']['xSimpleMax']) {
-                        $xSimple = $arrLimit['xSimple']['xSimpleMax'];
-                    }
-                    if ($xAverage < $arrLimit['xAverage']['xAverageMin']) {
-                        $xAverage = $arrLimit['xAverage']['xAverageMin'];
-                    }
-                    if ($xAverage > $arrLimit['xAverage']['xAverageMax']) {
-                        $xAverage = $arrLimit['xAverage']['xAverageMax'];
-                    }
-                    if ($xComplex < $arrLimit['xComplex']['xComplexMin']) {
-                        $xComplex = $arrLimit['xComplex']['xComplexMin'];
-                    }
-                    if ($xComplex > $arrLimit['xComplex']['xComplexMax']) {
-                        $xComplex = $arrLimit['xComplex']['xComplexMax'];
-                    }
                     $ucSimple = $xSimple * $dataset['simpleUC'];
                     $ucAverage = $xAverage * $dataset['averageUC'];
                     $ucComplex = $xComplex * $dataset['complexUC'];
