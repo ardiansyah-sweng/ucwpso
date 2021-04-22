@@ -129,8 +129,8 @@ class ParticleSwarmOptimizer
 
             ## Generate population
             if ($iteration === 0) {
-                $R1[$iteration + 1]  = $this->sine($this->randomZeroToOne());
-                $R2[$iteration + 1] = $this->singer($this->randomZeroToOne());
+                $R1[$iteration + 1]  = $this->sine(0.7);
+                $R2[$iteration + 1] = $this->singer(0.7);
                 for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();

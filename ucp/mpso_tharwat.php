@@ -13,6 +13,7 @@ class ParticleSwarmOptimizer
     protected $dataset;
     protected $productivity_factor;
     protected $MAX_COUNTER;
+    private $AVOIDED_RANDOM_VALUE = array(0.00, 0.25, 0.50, 0.75, 1.00);
 
     function __construct($swarm_size, $C1, $C2, $max_iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $max_counter)
     {
@@ -98,6 +99,11 @@ class ParticleSwarmOptimizer
         return cos($iteration * cos(pow($chaos_value, -1)));
     }
 
+    function gauss($value)
+    {
+        return fmod(1 / $value, 1);
+    }
+
     function comparePbests($Pbests, $particles)
     {
         foreach ($Pbests as $key => $pbest) {
@@ -167,6 +173,112 @@ class ParticleSwarmOptimizer
         return (2.3 * POW($chaos_value, 2)) * sin(pi() * $chaos_value);
     }
 
+    function bernoulli($chaos_value)
+    {
+        if ($chaos_value > 0 && $chaos_value <= (1 - (1 / 2))) {
+            return $chaos_value / (1 - (1 / 2));
+        }
+        if ($chaos_value > (1 - (1 / 2)) && $chaos_value < 1) {
+            return ($chaos_value - (1 - (1 / 2))) / (1 / 2);
+        }
+    }
+
+    function circle($chaos_value)
+    {
+        return fmod($chaos_value + 0.2 - (0.5 / (2 * pi())) * sin(2 * pi() * $chaos_value), 1);
+    }
+
+    function lieb($chaos_value)
+    {
+        $P1 = $this->randomZeroToOne();
+        $P2 = $this->randomZeroToOne();
+        $counter = 0;
+        while ($counter < 10) {
+            if ($P1 > $P2) {
+                $P1 = $this->randomZeroToOne();
+                $P2 = $this->randomZeroToOne();
+                $counter = 0;
+            }
+            if ($P1 < $P2) {
+                $counter++;
+            }
+        }
+        $alpha = ($P2 / $P1) * (1 - ($P2 - $P1));
+        $betha = (1 / ($P2 - 1)) * (($P2 - 1) - ($P1 * ($P2 - $P1)));
+        //0 < r[iterasi] <= P1
+        if ($chaos_value > 0 && $chaos_value <= $P1) {
+            return $alpha * $chaos_value;
+        }
+        //P1 < r[iterasi] <= P2
+        if ($chaos_value > $P1 && $chaos_value <= $P2) {
+            return ($P2 - $chaos_value) / ($P2 - $P1);
+        }
+        //P2 < r[iterasi] <= 1
+        if ($chaos_value > $P2 && $chaos_value <= 1) {
+            return 1 - ($betha * (1 - $chaos_value));
+        }
+    }
+
+    function iterative($chaos_value)
+    {
+        return sin(($chaos_value * pi()) / $chaos_value);
+    }
+
+    /**
+     * Fungsi pengecekan $r0 != AVOIDED_RANDOM_VALUE
+     * Jika sama ulangi random hingga tidak sama
+     */
+    function randomNumber($r0_baru)
+    {
+        $i = 0;
+        while ($i < count($this->AVOIDED_RANDOM_VALUE)) {
+            if ($this->AVOIDED_RANDOM_VALUE[$i] == $r0_baru) {
+                $r0_baru = number_format($this->randomZeroToOne(), 2);
+                $i = 0;
+            }
+            if ($this->AVOIDED_RANDOM_VALUE[$i] != $r0_baru) {
+                $i++;
+            }
+        }
+        return $r0_baru;
+    }
+
+    function logistic($chaos_value)
+    {
+        $r0 = $this->randomNumber(number_format($chaos_value, 2));
+        return (4 * $r0) * (1 - $r0);
+    }
+
+    function piecewise($chaos_value)
+    {
+        $P = mt_rand(0.01 * 100, 0.5 * 100) / 100;
+
+        //P >= r[iterasi] >= 0
+        if ($chaos_value >= 0 && $chaos_value <= $P) {
+            return $chaos_value / $P;
+        }
+        // 0.5 >= r[$iterasi] >= P
+        if ($chaos_value >= $P && $chaos_value <= 0.5) {
+            return ($chaos_value - $P) / (0.5 - $P);
+        }
+        //1-P >= r[$iterasi] >= 0.5
+        if ($chaos_value >= 0.5 && $chaos_value <= (1 - $P)) {
+            return (1 - $P - $chaos_value) / (0.5 - $P);
+        }
+        //1 >= r[iterasi] >= 1-P
+        if ($chaos_value >= (1 - $P) && $chaos_value <= 1) {
+            return (1 - $chaos_value) / $P;
+        }
+    }
+
+    function tent($chaos_value)
+    {
+        if ($chaos_value < 0.7) {
+            return $chaos_value / 0.7;
+        }
+        return (10 / 3) * (1 - $chaos_value);
+    }
+
     function findSolution($project)
     {
         $vMaxSimple = 2.49;
@@ -178,8 +290,8 @@ class ParticleSwarmOptimizer
 
             ## Generate population
             if ($iteration === 0) {
-                $R1[$iteration + 1] = $this->sinu($this->randomZeroToOne());
-                $R2[$iteration + 1] = $this->chebyshev($iteration, $this->randomZeroToOne());
+                $R1[$iteration + 1] = $this->tent($this->randomZeroToOne());
+                $R2[$iteration + 1] = $this->bernoulli($this->randomZeroToOne());
                 for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();
@@ -203,8 +315,8 @@ class ParticleSwarmOptimizer
             } ## End Generate Population
 
             if ($iteration > 0) {
-                $R1[$iteration + 1] = $this->sinu($R1[$iteration]);
-                $R2[$iteration + 1] = $this->chebyshev($iteration, $R2[$iteration]);
+                $R1[$iteration + 1] = $this->tent($R1[$iteration]);
+                $R2[$iteration + 1] = $this->bernoulli($R2[$iteration]);
                 for ($i = 0; $i <= $this->swarm_size - 1; $i++) {
                     $Gbest_simple = $Gbest[$iteration]['xSimple'];
                     $Gbest_average = $Gbest[$iteration]['xAverage'];
@@ -366,18 +478,18 @@ $productivity_factor = 20;
 $MAX_COUNTER = 100;
 
 for ($iteration = 1; $iteration <= $MAX_ITERATION; $iteration++) {
-    //$start = microtime(true);
+    $start = microtime(true);
     for ($trial = 0; $trial <= $trials - 1; $trial++) {
         $optimize = new ParticleSwarmOptimizer($swarm_size, $C1, $C2, $iteration, $max_inertia, $min_inertia, $stopping_value, $dataset, $productivity_factor, $MAX_COUNTER);
         $absolute_errors[]  = $optimize->finishing();
     }
     $best_MAE = min($absolute_errors);
     echo $iteration . ' == ' . $best_MAE . '<br>';
-    //$start = microtime(true);
-    //$duration = $end - $start;
 
+    $end = microtime(true);
+    $duration = $end - $start;
     //convert to txt
-    $data = array($duration,$best_MAE);
+    $data = array($duration, $best_MAE);
     $fp = fopen('hasil_mpso_tharwat.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
