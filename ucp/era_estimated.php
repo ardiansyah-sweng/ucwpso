@@ -322,10 +322,8 @@ class Raoptimizer
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
             $r1 = $this->randomZeroToOne();
             $r2 = $this->randomZeroToOne();
-            $r3 = $this->randomZeroToOne();
             $r1_mutation = $this->randomZeroToOne();
             $r2_mutation = $this->randomZeroToOne();
-            $r3_mutation = $this->randomZeroToOne();
 
             ## Generate population
             if ($generation === 0) {
@@ -363,23 +361,51 @@ class Raoptimizer
 
                 ## Entering Rao algorithm for HQ population
                 foreach ($splitted_particles['hq'] as $i => $individu) {
-                    $index_candidate1 = array_rand($splitted_particles['hq']);
-                    $index_candidate2 = array_rand($splitted_particles['hq']);
-                    $ae_candidate1 = $splitted_particles['hq'][$index_candidate1]['ae'];
-                    $ae_candidate2 = $splitted_particles['hq'][$index_candidate2]['ae'];
+                    $ae_candidate_xSimple1 = $splitted_particles['hq'][$key_xSimple1 = array_rand($splitted_particles['hq'])]['ae'];
+                    $ae_candidate_xSimple2 = $splitted_particles['hq'][$key_xSimple2 = array_rand($splitted_particles['hq'])]['ae'];
+                    $ae_candidate_xAverage1 = $splitted_particles['hq'][$key_xAverage1 = array_rand($splitted_particles['hq'])]['ae'];
+                    $ae_candidate_xAverage2 = $splitted_particles['hq'][$key_xAverage2 = array_rand($splitted_particles['hq'])]['ae'];
+                    $ae_candidate_xComplex1 = $splitted_particles['hq'][$key_xComplex1 = array_rand($splitted_particles['hq'])]['ae'];
+                    $ae_candidate_xComplex2 = $splitted_particles['hq'][$key_xComplex2 = array_rand($splitted_particles['hq'])]['ae'];
 
-                    // if ($individu['ae'] > $ae_candidate1) {
-                    //     $A1 = $splitted_particles['hq'][$index_candidate1]['A'];
-                    // }
-                    // if ($individu['ae'] < $ae_candidate1 || $individu['ae'] == $ae_candidate1) {
-                    //     $A1 = $individu['A'];
-                    // }
-                    // if ($individu['ae'] > $ae_candidate2) {
-                    //     $A2 = $splitted_particles['hq'][$index_candidate2]['A'];
-                    // }
-                    // if ($individu['ae'] < $ae_candidate2 || $individu['ae'] == $ae_candidate2) {
-                    //     $A2 = $individu['A'];
-                    // }
+                    if ($individu['ae'] > $ae_candidate_xSimple1) {
+                        $xSimple1 = $splitted_particles['hq'][$key_xSimple1]['xSimple'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xSimple1 || $individu['ae'] == $ae_candidate_xSimple1) {
+                        $xSimple1 = $individu['xSimple'];
+                    }
+                    if ($individu['ae'] > $ae_candidate_xSimple2) {
+                        $xSimple2 = $splitted_particles['hq'][$key_xSimple2]['xSimple'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xSimple2 || $individu['ae'] == $ae_candidate_xSimple2) {
+                        $xSimple2 = $individu['xSimple'];
+                    }
+
+                    if ($individu['ae'] > $ae_candidate_xAverage1) {
+                        $xAverage1 = $splitted_particles['hq'][$key_xAverage1]['xAverage'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xAverage1 || $individu['ae'] == $ae_candidate_xAverage1) {
+                        $xAverage1 = $individu['xAverage'];
+                    }
+                    if ($individu['ae'] > $ae_candidate_xAverage2) {
+                        $xAverage2 = $splitted_particles['hq'][$key_xAverage2]['xAverage'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xAverage2 || $individu['ae'] == $ae_candidate_xAverage2) {
+                        $xAverage2 = $individu['xAverage'];
+                    }
+
+                    if ($individu['ae'] > $ae_candidate_xComplex1) {
+                        $xComplex1 = $splitted_particles['hq'][$key_xComplex1]['xComplex'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xComplex1 || $individu['ae'] == $ae_candidate_xComplex1) {
+                        $xComplex1 = $individu['xComplex'];
+                    }
+                    if ($individu['ae'] > $ae_candidate_xComplex2) {
+                        $xComplex2 = $splitted_particles['hq'][$key_xComplex2]['xComplex'];
+                    }
+                    if ($individu['ae'] < $ae_candidate_xComplex2 || $individu['ae'] == $ae_candidate_xComplex2) {
+                        $xComplex2 = $individu['xComplex'];
+                    }
 
                     ## Rao-1 
                     // $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
@@ -387,12 +413,19 @@ class Raoptimizer
                     // $xComplex = $individu['xComplex'] + $r3 * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
 
                     ## Rao-1 Chaotic
-                    $xSimple = $particles[$generation][$i]['xSimple'] + $chaotic[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
-                    $xAverage = $particles[$generation][$i]['xAverage'] + $chaotic[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
-                    $xComplex = $particles[$generation][$i]['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
+                    // $xSimple = $particles[$generation][$i]['xSimple'] + $chaotic[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
+                    // $xAverage = $particles[$generation][$i]['xAverage'] + $chaotic[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
+                    // $xComplex = $particles[$generation][$i]['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
 
                     ## Rao-3 
-                    // $xSimple = $individu['A'] + $r1 * ($Xbest[$generation]['A'] - abs($Xworst[$generation]['A'])) + ($r2 * (abs($A1) - $A2));
+                    // $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2 * (abs($xSimple1) - $xSimple2));
+                    // $xAverage = $individu['xAverage'] + $r1 * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2 * (abs($xAverage1) - $xAverage2));
+                    // $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2 * (abs($xComplex1) - $xComplex2));
+
+                    ## Rao-3 chaotic
+                    $xSimple = $individu['xSimple'] + $chaotic[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($chaotic[$generation] * (abs($xSimple1) - $xSimple2));
+                    $xAverage = $individu['xAverage'] + $chaotic[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($chaotic[$generation] * (abs($xAverage1) - $xAverage2));
+                    $xComplex = $individu['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($chaotic[$generation] * (abs($xComplex1) - $xComplex2));
 
                     if ($xSimple < $this->range_positions['min_xSimple']) {
                         $xSimple = $this->range_positions['min_xSimple'];
@@ -510,7 +543,7 @@ class Raoptimizer
 
 
 $file_name = 'silhavy_dataset.txt';
-$particle_size = 60;
+$particle_size = 200;
 $maximum_generation = 40;
 $trials = 1000;
 $s = 0.5;
