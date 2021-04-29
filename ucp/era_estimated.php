@@ -328,7 +328,7 @@ class Raoptimizer
             ## Generate population
             if ($generation === 0) {
                 for ($i = 0; $i <= $this->parameters['particle_size']; $i++) {
-                    $chaotic[$generation + 1] = $this->singer(0.8);
+                    $chaotic[$generation + 1] = $this->sinu($this->randomzeroToOne());
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();
                     $xComplex = $this->randomComplexUCWeight();
@@ -346,7 +346,7 @@ class Raoptimizer
             } ## End if generation = 0
 
             if ($generation > 0) {
-                $chaotic[$generation + 1] = $this->singer($chaotic[$generation]);
+                $chaotic[$generation + 1] = $this->sinu($chaotic[$generation]);
                 $sorted_particles = $this->qualityEvalution($particles[$generation]);
                 $Xbest[$generation] = $this->minimalAE($sorted_particles);
                 $Xworst[$generation] = $this->maximalAE($sorted_particles);

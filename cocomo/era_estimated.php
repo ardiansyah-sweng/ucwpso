@@ -61,7 +61,7 @@ class Raoptimizer
 
     function estimating($A, $size, $E, $effort_multipliers)
     {
-        return $A * pow($size, $E) * array_sum($effort_multipliers);
+        return $A * pow($size, $E) * array_product($effort_multipliers);
     }
 
     function minimalAE($particles)
@@ -237,26 +237,27 @@ class Raoptimizer
         $EM['sced'] = $projects['sced'];
 
         for ($generation = 0; $generation <= $this->maximum_generation; $generation++) {
-            //$r1 = $this->randomZeroToOne(); ## Non chaotic
-            //$r2 = $this->randomZeroToOne();## Non chaotic
+            // $r1 = $this->randomZeroToOne(); ## Non chaotic
+            // $r2 = $this->randomZeroToOne();## Non chaotic
             $r1_mutation = $this->randomZeroToOne();
             $r2_mutation = $this->randomZeroToOne();
+            //$B = $this->randomZeroToOne(); ## Non chaotic
 
             ## Generate population
             if ($generation === 0) {
-                $r1[$generation + 1] = $this->singer(0.8);
-                $r2[$generation + 1] = $this->singer(0.8);
+                $r1[$generation + 1] = $this->singer($this->randomzeroToOne());
+                $r2[$generation + 1] = $this->singer($this->randomzeroToOne());
                 for ($i = 0; $i <= $this->particle_size; $i++) {
                     $A = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
-                    //$B = $this->randomZeroToOne(); ## Non chaotic
-                    $B[$generation + 1] = $this->singer(0.8); ## chaotic
-                    //$E = $this->scaleEffortExponent($B, $SF); ## Non chaotic
+
+                    $B[$generation + 1] = $this->singer($this->randomzeroToOne()); ## chaotic
+                    // $E = $this->scaleEffortExponent($B, $SF); ## Non chaotic
                     $E = $this->scaleEffortExponent($B[$generation + 1], $SF); ## chaotic
 
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
                     $particles[$generation + 1][$i]['A'] = $A;
-                    //$particles[$generation + 1][$i]['B'] = $B; ## Non chaotic
+                    // $particles[$generation + 1][$i]['B'] = $B; ## Non chaotic
                     $particles[$generation + 1][$i]['B'] = $B[$generation + 1]; ## chaotic
                     $particles[$generation + 1][$i]['E'] = $E;
                     $particles[$generation + 1][$i]['EM'] = array_sum($EM);
@@ -270,7 +271,7 @@ class Raoptimizer
             } ## End if generation = 0
 
             if ($generation > 0) {
-                $B[$generation + 1] = $this->singer($B[$generation]);
+                $B[$generation + 1] = $this->singer($B[$generation]); ## Chaotic
 
                 $r1[$generation + 1] = $this->singer($r1[$generation]); ## Chaotic
                 $r2[$generation + 1] = $this->singer($r2[$generation]); ## Chaotic
@@ -317,19 +318,21 @@ class Raoptimizer
                     // $A = $individu['A'] + $r1 * ($Xbest[$generation]['A'] - $Xworst[$generation]['A']) + ($r2 * (abs($A1) - abs($A2)));
 
                     ## Rao-2 Chaotic
-                    $A = $individu['A'] + $r1[$generation] * ($Xbest[$generation]['A'] - $Xworst[$generation]['A']) + ($r2[$generation] * (abs($A1) - abs($A2)));
+                    // $A = $individu['A'] + $r1[$generation] * ($Xbest[$generation]['A'] - $Xworst[$generation]['A']) + ($r2[$generation] * (abs($A1) - abs($A2)));
 
                     ## Rao-3 
                     // $A = $individu['A'] + $r1 * ($Xbest[$generation]['A'] - abs($Xworst[$generation]['A'])) + ($r2 * (abs($A1) - $A2));
 
                     ## Rao-3 chaotic
                     // $A = $individu['A'] + $r1[$generation] * ($Xbest[$generation]['A'] - abs($Xworst[$generation]['A'])) + ($r2[$generation] * (abs($A1) - $A2));
+                    // $E = $this->scaleEffortExponent($B, $SF);
 
-                    $E = $this->scaleEffortExponent($B[$generation], $SF);
+                    $E = $this->scaleEffortExponent($B[$generation], $SF); ## Chaotic
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
                     $hq[$generation][$i]['A'] = $A;
-                    $hq[$generation][$i]['B'] = $B[$generation];
+                    $hq[$generation][$i]['B'] = $B[$generation]; ## Chaotic
+                    //$hq[$generation][$i]['B'] = $B;
                     $hq[$generation][$i]['E'] = $E;
                     $hq[$generation][$i]['EM'] = array_sum($EM);
                     $hq[$generation][$i]['SF'] = array_sum($SF);
@@ -477,7 +480,7 @@ $scales = array(
 );
 
 $file_name = 'cocomo.txt';
-$particle_size = 20;
+$particle_size = 60;
 $maximum_generation = 40;
 $trials = 1000;
 $s = 0.5;

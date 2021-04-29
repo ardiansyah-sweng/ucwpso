@@ -164,6 +164,18 @@ class Raoptimizer
 
     function updateWeights($weights, $r1, $r2, $candidate_weights, $Xbest, $Xworst, $rao, $factor)
     {
+        if ($rao == 'rao-3') {
+            foreach ($weights as $key => $weight) {
+                $ret[$key] = $weight + $r1 * ($Xbest[$key] - abs($Xworst[$key])) + ($r2 * (abs($candidate_weights[0][$key][0]) - $candidate_weights[0][$key][1]));
+                if ($ret[$key] < $this->parameters[$factor][$key]) {
+                    $ret[$key] = $this->parameters[$factor][$key];
+                }
+                if ($ret[$key] > $this->parameters[$factor]['max']) {
+                    $ret[$key] = $this->parameters[$factor]['max'];
+                }
+            }
+            return $ret;
+        }
         foreach ($weights as $key => $weight) {
             $ret[$key] = $weight + $r1 * ($Xbest[$key] - abs($Xworst[$key])) + ($r2 * (abs($candidate_weights[0][$key][0]) - $candidate_weights[0][$key][1]));
             if ($ret[$key] < $this->parameters[$factor][$key]) {
@@ -174,6 +186,7 @@ class Raoptimizer
             }
         }
         return $ret;
+
     }
 
     function averageWeights($weights, $factor)
@@ -315,7 +328,7 @@ class Raoptimizer
             $estimated_time = $this->estimatedTimeInDays($target_projects['effort'], $velocity);
             $absolute_error = $this->absoluteError($estimated_time, $target_projects['actual_time']);
 
-            return [
+            $ret[] = [
                 'friction_factors_weights' => $friction_factor_weights,
                 'dynamic_force_factor_weights' => $dynamic_force_factor_weights,
                 'actual_time' => $target_projects['actual_time'],
@@ -323,6 +336,7 @@ class Raoptimizer
                 'ae' => $absolute_error
             ];
         }
+        return $ret;
     }
 
     function delta($f1, $f2, $f3)
@@ -362,7 +376,7 @@ class Raoptimizer
         if ($delta_f1 == 0 && $delta_f2 == 0) {
             return $mutation_radius * 1.03;
         }
-        return $this->a;
+        return $this->parameters['a'];
     }
 
     function updatingMutationRate($f1, $f2, $f3, $mutation_rate)
@@ -376,7 +390,17 @@ class Raoptimizer
         if ($delta_f1 == 0 && $delta_f2 == 0) {
             return $mutation_rate * 1.03;
         }
-        return $this->b;
+        return $this->parameters['b'];
+    }
+
+    function singer($value)
+    {
+        return 1.07 * ((7.86 * $value) - (23.31 * POW($value, 2)) + (28.75 * POW($value, 3)) - (13.302875 * POW($value, 4)));
+    }
+
+    function sinu($chaos_value)
+    {
+        return (2.3 * POW($chaos_value, 2)) * sin(pi() * $chaos_value);
     }
 
 
@@ -391,7 +415,7 @@ class Raoptimizer
             ## Generate population
             if ($generation === 0) {
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
-                    //$chaotic[$generation + 1] = $this->singer(0.8);
+                    $chaotic[$generation + 1] = $this->singer($this->randomzeroToOne());
 
                     $friction_factor_weights = $this->frictionFactorsRandomWeight();
                     $dynamic_force_factor_weights = $this->dynamicForceFactorsRandomWeight();
@@ -414,7 +438,7 @@ class Raoptimizer
             } ## End if generation = 0
 
             if ($generation > 0) {
-                //$chaotic[$generation + 1] = $this->singer($chaotic[$generation]);
+                $chaotic[$generation + 1] = $this->singer($chaotic[$generation]);
                 $sorted_particles = $this->qualityEvalution($particles[$generation]);
                 $Xbest[$generation] = $this->minimalAE($sorted_particles);
                 $Xworst[$generation] = $this->maximalAE($sorted_particles);
@@ -429,28 +453,27 @@ class Raoptimizer
 
                 ## Entering Rao algorithm for HQ population
                 foreach ($splitted_particles['hq'] as $i => $individu) {
-                    //$candidates = $this->candidating($particles[$generation], $individu);
 
                     ## Rao-3
                     $candidates = $this->candidating($splitted_particles['hq'], $individu);
                     $friction_factor_weights = $this->updateWeights(
                         $individu['friction_factors_weights'],
-                        $r1,
-                        $r2,
+                        $chaotic[$generation + 1],
+                        $chaotic[$generation + 1],
                         $candidates['friction_factors'],
                         $Xbest[$generation]['friction_factors_weights'],
                         $Xworst[$generation]['friction_factors_weights'],
-                        'rao-3',
+                        'chaotic',
                         'friction_factors'
                     );
                     $dynamic_force_factor_weights = $this->updateWeights(
                         $individu['dynamic_force_factor_weights'],
-                        $r1,
-                        $r2,
+                        $chaotic[$generation + 1],
+                        $chaotic[$generation + 1],
                         $candidates['dynamic_force_factor'],
                         $Xbest[$generation]['dynamic_force_factor_weights'],
                         $Xworst[$generation]['dynamic_force_factor_weights'],
-                        'rao-3',
+                        'chaotic',
                         'dynamic_force_factors'
                     );
 
@@ -494,10 +517,19 @@ class Raoptimizer
                 if ($r < 0.5 && $r2_mutation < $this->parameters['b']) {
                     $Xbest[$generation + 1] = $this->mutation($Xbest[$generation], $r1_mutation, $mutation_radius[$generation], $target_projects);
                 }
+
+                //print_r($splitted_particles['lq']);echo '<p>';
                 $r_random_walk = $this->randomZeroToOne();
                 $LQ = $this->randomWalk($splitted_particles['lq'], $HQ_particle, $r_random_walk, $target_projects);
 
+                //print_r($hq[$generation]); 
+                // echo '<p>';
+                //print_r($LQ);
+                //echo '<p>';
+
                 $particles[$generation + 1] = array_merge($hq[$generation], $LQ);
+                // print_r($particles[$generation + 1]);
+                //dd($hq[$generation]);    
 
                 ## Fitness evaluations
                 if ($Xbest[$generation]['ae'] < $this->parameters['fitness']) {
@@ -556,7 +588,7 @@ $dataset = [
 ];
 $particle_size = 60;
 $maximum_generation = 40;
-$trials = 10;
+$trials = 1000;
 $fitness = 0.1;
 $friction_factors = [
     'ff_team_composition' => 0.91,

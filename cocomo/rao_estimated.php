@@ -60,7 +60,7 @@ class Raoptimizer
 
     function estimating($A, $size, $E, $effort_multipliers)
     {
-        return $A * pow($size, $E) * array_sum($effort_multipliers);
+        return $A * pow($size, $E) * array_product($effort_multipliers);
     }
 
     function minimalAE($particles)
@@ -82,6 +82,22 @@ class Raoptimizer
     function randomZeroToOne()
     {
         return (float) rand() / (float) getrandmax();
+    }
+
+    function candidating($particles, $individu)
+    {
+        for ($i = 1; $i <= 2; $i++) {
+            $ae_candidate = $particles[array_rand($particles)];
+
+            if ($individu['ae'] > $ae_candidate['ae']) {
+                $candidate = $ae_candidate['A'];
+            }
+            if ($individu['ae'] < $ae_candidate['ae'] || $individu['ae'] == $ae_candidate['ae']) {
+                $candidate = $individu['A'];
+            }
+            $ret[$i] = $candidate;
+        }
+        return $ret;
     }
 
     function cocomo($projects)
@@ -110,6 +126,8 @@ class Raoptimizer
         $EM['sced'] = $projects['sced'];
 
         for ($generation = 0; $generation <= $this->maximum_generation - 1; $generation++) {
+            $r1 = $this->randomzeroToOne();
+            $r2 = $this->randomzeroToOne();
             $B = $this->randomZeroToOne();
             ## Generate population
             if ($generation === 0) {
@@ -127,8 +145,17 @@ class Raoptimizer
 
             if ($generation > 0) {
 
-                for ($i = 0; $i <= $this->particle_size - 1; $i++) {
-                    $A = $particles[$generation][$i]['A'] + $B * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+                foreach ($particles[$generation] as $i => $particle) {
+
+                    ## Rao-1
+                    // $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+
+                    $candidates = $this->candidating($particles[$generation], $particle);
+                    ## Rao-2
+                    // $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']) + ($r2 * (abs($candidates[1]) - abs($candidates[2])));
+
+                    ## Rao-3
+                    $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - abs($worst_particles[$generation]['A'])) + ($r2 * (abs($candidates[1]) - $candidates[2]));
 
                     $E = $this->scaleEffortExponent($B, $SF);
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
@@ -265,24 +292,25 @@ $scales = array(
 );
 
 $file_name = 'cocomo.txt';
-$particle_size = 60;
+$particle_size = 40;
 $maximum_generation = 40;
 $trials = 1000;
 $lower_bound = 0.01;
 $upper_bound = 5;
 $fitness = 10;
+$number_of_project_cocomo = 93;
 
 $optimize = new Raoptimizer($file_name, $scales, $particle_size, $maximum_generation, $lower_bound, $upper_bound, $fitness, $trials);
 
 $optimized = $optimize->processingDataset();
-echo 'MAE: ' . array_sum(array_column($optimized, 'ae')) / 93;
+echo 'MAE: ' . array_sum(array_column($optimized, 'ae')) / $number_of_project_cocomo;
 echo '<p>';
 foreach ($optimized as $key => $result) {
     echo $key . ' ';
     print_r($result);
     echo '<br>';
     $data = array($result['A'], $result['B'], $result['E'], $result['effort'], $result['estimatedEffort'], $result['ae']);
-    $fp = fopen('hasil_rao1_estimated.txt', 'a');
+    $fp = fopen('hasil_rao_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }

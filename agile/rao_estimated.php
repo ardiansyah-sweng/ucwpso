@@ -198,8 +198,6 @@ class Raoptimizer
             }
         }
         return $ret;
-
-        // $t14 = $individu['weights']['t14']  + $r1 * ($Xbest[$generation]['weights']['t14'] - abs($Xworst[$generation]['weights']['t14'])) + ($r2 * (abs($candidates['t141']) - $candidates['t142']));
     }
 
     function averageWeights($weights, $factor)
