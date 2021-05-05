@@ -138,23 +138,13 @@ class Raoptimizer
         return $selection_probabilities;
     }
 
-    function rouletteWheel($archive_A)
+    function rouletteWheel($archive_A, $selection_probabilities)
     {
         ## Scaling mechanism
         foreach ($archive_A as $key => $ae) {
             $females[] = [
                 'index' => $key,
                 'ae' => 1 / $ae['ae']
-            ];
-        }
-
-        ## Selection probability
-        $sum_females = array_sum(array_column($females, 'ae'));
-        foreach ($females as $female) {
-            $selection_probabilities[] = [
-                'index' => $female['index'],
-                'scale' => $female['ae'],
-                'probability' => $female['ae'] / $sum_females
             ];
         }
 
@@ -191,7 +181,7 @@ class Raoptimizer
         $k = 1;
         $x0 = 0;
         $L = 1;
-        return $L / (1 + exp(-$k * ($x - $x0)));
+        return $L / (1 + exp(- ($k * ($x - $x0))));
     }
 
     function firefly($single_particle, $particles, $r, $generation, $females)
@@ -265,12 +255,78 @@ class Raoptimizer
         return $ret;
     }
 
+    function movingFireflyXiToXj($Xi, $Xj, $r, $alpha)
+    {
+        $xSimple = $Xi['xSimple'] + $this->attractiveness($r) * ($Xj['xSimple'] - $Xi['xSimple']) + $alpha * $this->randomEpsilon();
+        if ($xSimple < $this->range_positions['min_xSimple']) {
+            $xSimple = $this->range_positions['min_xSimple'];
+        }
+        if ($xSimple > $this->range_positions['max_xSimple']) {
+            $xSimple = $this->range_positions['max_xSimple'];
+        }
+        $xAverage = $Xi['xAverage'] + $this->attractiveness($r) * ($Xj['xAverage'] - $Xi['xAverage']) + $alpha * $this->randomEpsilon();
+        if ($xAverage < $this->range_positions['min_xAverage']) {
+            $xAverage = $this->range_positions['min_xAverage'];
+        }
+        if ($xAverage > $this->range_positions['max_xAverage']) {
+            $xAverage = $this->range_positions['max_xAverage'];
+        }
+        $xComplex = $Xi['xComplex'] + $this->attractiveness($r) * ($Xj['xComplex'] - $Xi['xComplex']) + $alpha * $this->randomEpsilon();
+        if ($xComplex < $this->range_positions['min_xComplex']) {
+            $xComplex = $this->range_positions['min_xComplex'];
+        }
+        if ($xComplex > $this->range_positions['max_xComplex']) {
+            $xComplex = $this->range_positions['max_xComplex'];
+        }
+        return ['xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex];
+    }
+
+    function gamma($upper_bound, $lower_bound)
+    {
+        return 1 / pow(($upper_bound - $lower_bound), 2);
+    }
+
+    function beta($r, $gamma)
+    {
+        return $this->parameters['b_min'] + ($this->parameters['b'] - $this->parameters['b_min']) * exp(-$gamma * pow($r, 2));
+    }
+
+    function movingFireflyXjToXk($Xj, $Xk, $r, $v, $alpha, $gamma)
+    {
+        $xSimple = $Xj['xSimple'] + $v['vSimple'] * exp(-$gamma['gSimple'] * pow($r, 2)) * ($Xk['xSimple'] - $Xj['xSimple']) + $alpha * $this->randomEpsilon();
+        if ($xSimple < $this->range_positions['min_xSimple']) {
+            $xSimple = $this->range_positions['min_xSimple'];
+        }
+        if ($xSimple > $this->range_positions['max_xSimple']) {
+            $xSimple = $this->range_positions['max_xSimple'];
+        }
+
+        $xAverage = $Xj['xAverage'] + $v['vAverage'] * exp(-$gamma['gAverage'] * pow($r, 2)) * ($Xk['xAverage'] - $Xj['xAverage']) + $alpha * $this->randomEpsilon();
+        if ($xAverage < $this->range_positions['min_xAverage']) {
+            $xAverage = $this->range_positions['min_xAverage'];
+        }
+        if ($xAverage > $this->range_positions['max_xAverage']) {
+            $xAverage = $this->range_positions['max_xAverage'];
+        }
+
+        $xComplex = $Xj['xComplex'] + $v['vComplex'] * exp(-$gamma['gComplex'] * pow($r, 2)) * ($Xk['xComplex'] - $Xj['xComplex']) + $alpha * $this->randomEpsilon();
+        if ($xComplex < $this->range_positions['min_xComplex']) {
+            $xComplex = $this->range_positions['min_xComplex'];
+        }
+        if ($xComplex > $this->range_positions['max_xComplex']) {
+            $xComplex = $this->range_positions['max_xComplex'];
+        }
+
+        return ['xSimple' => $xSimple, 'xAverage' => $xAverage, 'xComplex' => $xComplex];
+    }
+
     function UCP($projects)
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
             $r = $this->randomzeroToOne();
             ## Generate population
             if ($generation === 0) {
+                $alpha[$generation + 1] = $this->randomzeroToOne();
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();
@@ -289,56 +345,131 @@ class Raoptimizer
                 $archive_A[$generation + 1] = $particles[$generation + 1];
                 ## Initialize selection probabilites
                 $selection_probabilities[$generation + 1] = $this->selectionProbabilities($archive_A[$generation + 1]);
+
+                $global_min_ae = min(array_column($particles[$generation + 1], 'ae'));
+                $index_global_min = array_search($global_min_ae, array_column($particles[$generation + 1], 'ae'));
+                $global_min[$generation + 1] = $particles[$generation + 1][$index_global_min];
             } ## End if generation = 0
 
-            if ($generation > 0) {
+            if ($generation > 0 && $generation < 5) {
+                echo '<b> Gen: ' . $generation . '</b><br>';
                 $FEs = $this->parameters['particle_size'];
-                foreach ($particles[$generation] as $key => $particle) {
-                    echo 'Xi = ';
-                    print_r($particle);
+                $maxFEs = max(array_column($particles[$generation], 'ae'));
+                //while ($FEs < $maxFEs) {
+                foreach ($particles[$generation] as $i => $Xi) {
+                    echo 'i: ' . $i . ' ';
+                    print_r($Xi);
                     echo '<br>';
-                    $positions = $this->firefly($particle, $particles[$generation], $r, $generation, $this->rouletteWheel($archive_A[$generation]));
+                    foreach ($particles[$generation] as $Xj) {
+                        //echo '&nbsp;&nbsp;&nbsp;&nbsp; ==>';
+                        //print_r($Xj);
+                        //echo '<br>';
 
-                    foreach ($positions as $position) {
-                        $UCP = $this->size($position['xSimple'], $projects['simpleUC'], $position['xAverage'], $projects['averageUC'], $position['xComplex'], $projects['complexUC'], $projects['uaw'], $projects['tcf'], $projects['ecf']);
-                        $esimated_effort = $UCP * $this->productivity_factor;
-                        $ae = abs($esimated_effort - floatval($projects['actualEffort']));
-                        $new_fireflies[] = [
-                            'estimatedEffort' => $esimated_effort,
-                            'ucp' => $UCP, 'ae' => $ae,
-                            'xSimple' => $position['xSimple'],
-                            'xAverage' => $position['xAverage'],
-                            'xComplex' => $position['xComplex']
-                        ];
+                        if ($Xj['ae'] < $Xi['ae'] && $Xi !== $Xj) {
+                            $positionsXi = [
+                                'xSimple' => $Xi['xSimple'],
+                                'xAverage' => $Xi['xAverage'],
+                                'xComplex' => $Xi['xComplex']
+                            ];
+                            $positionsXj = [
+                                'xSimple' => $Xj['xSimple'],
+                                'xAverage' => $Xj['xAverage'],
+                                'xComplex' => $Xj['xComplex']
+                            ];
+
+                            $new_positions = $this->movingFireflyXiToXj($positionsXi, $positionsXj, $r, $alpha[$generation + 1]);
+                            $UCP = $this->size($new_positions['xSimple'], $projects['simpleUC'], $new_positions['xAverage'], $projects['averageUC'], $new_positions['xComplex'], $projects['complexUC'], $projects['uaw'], $projects['tcf'], $projects['ecf']);
+                            $esimated_effort = $UCP * $this->productivity_factor;
+                            $particles[$generation + 1][$i]['estimatedEffort'] = $esimated_effort;
+                            $particles[$generation + 1][$i]['ucp'] = $UCP;
+                            $particles[$generation + 1][$i]['ae'] = abs($esimated_effort - floatval($projects['actualEffort']));
+                            $particles[$generation + 1][$i]['xSimple'] = $xSimple;
+                            $particles[$generation + 1][$i]['xAverage'] = $xAverage;
+                            $particles[$generation + 1][$i]['xComplex'] = $xComplex;
+
+                            $FEs += $FEs;
+                            $maxFEs = max(array_column($particles[$generation + 1], 'ae'));
+                            //print_r($particles[$generation + 1]);
+                            //echo '<br>';
+
+                            //break;
+                            // echo '&nbsp;&nbsp;&nbsp;&nbsp; ==>';
+                            // echo 'New particle: ' . $FEs . ' ' . $maxFEs;
+                            // print_r($particles[$generation + 1]);
+                            // echo '<br>';
+                        } else {
+                            //print_r($global_min[$generation]);
+                            $selected_female = $this->rouletteWheel($archive_A[$generation], $selection_probabilities[$generation]);
+                            if ($selected_female['ae'] < $Xj['ae']) {
+
+                                $m = 1 / 800;
+                                $gamma_xSimple = $this->gamma($this->range_positions['max_xSimple'], $this->range_positions['min_xSimple']);
+                                $beta_xSimple = $this->beta($r, $gamma_xSimple);
+                                $V_xSimple = $r * $m * $this->logisticRegression(-$beta_xSimple ^ ($generation / 600));
+
+                                $gamma_xAverage = $this->gamma($this->range_positions['max_xAverage'], $this->range_positions['min_xAverage']);
+                                $beta_xAverage = $this->beta($r, $gamma_xAverage);
+                                $V_xAverage = $r * $m * $this->logisticRegression(-$beta_xAverage ^ ($generation / 600)); ## TODO I dont sure with ^ as replacement of pow :)
+
+                                $gamma_xComplex = $this->gamma($this->range_positions['max_xComplex'], $this->range_positions['min_xComplex']);
+                                $beta_xComplex = $this->beta($r, $gamma_xComplex);
+                                $V_xComplex = $r * $m * $this->logisticRegression(-$beta_xComplex ^ ($generation / 600));
+
+                                $v = ['vSimple' => $V_xSimple, 'vAverage' => $V_xAverage, 'vComplex' => $V_xComplex];
+
+                                $gamma = ['gSimple' => $gamma_xSimple, 'gAverage' => $gamma_xAverage, 'gComplex' => $gamma_xComplex];
+                                
+                                $alpha[$generation + 1] = pow((1 / 9000), (1 / $generation)) * $alpha[$generation];
+
+                                $new_positions = $this->movingFireflyXjToXk($Xj, $selected_female, $r, $v, $alpha[$generation + 1], $gamma);
+
+                                $UCP = $this->size($new_positions['xSimple'], $projects['simpleUC'], $new_positions['xAverage'], $projects['averageUC'], $new_positions['xComplex'], $projects['complexUC'], $projects['uaw'], $projects['tcf'], $projects['ecf']);
+                                $esimated_effort = $UCP * $this->productivity_factor;
+                                $particles[$generation + 1][$i]['estimatedEffort'] = $esimated_effort;
+                                $particles[$generation + 1][$i]['ucp'] = $UCP;
+                                $particles[$generation + 1][$i]['ae'] = abs($esimated_effort - floatval($projects['actualEffort']));
+                                $particles[$generation + 1][$i]['xSimple'] = $xSimple;
+                                $particles[$generation + 1][$i]['xAverage'] = $xAverage;
+                                $particles[$generation + 1][$i]['xComplex'] = $xComplex;
+                                //print_r($particles[$generation + 1]);
+                                //echo '<br>';
+                                //break;
+                                $FEs += $FEs;
+                                $maxFEs = max(array_column($particles[$generation + 1], 'ae'));
+                                // echo '&nbsp;&nbsp;&nbsp;&nbsp; ==>';
+                                // echo 'New particle: ' . $FEs . ' ' . $maxFEs;
+                                // print_r($particles[$generation + 1]);
+                                // echo '<br>';
+                            }
+                        }
                     }
-                    print_r($new_fireflies);
-                    echo '<p>';
-
-                    $min_ae = min(array_column($new_fireflies, 'ae'));
-                    $index_min_ae = array_search($min_ae, array_column($new_fireflies, 'ae'));
-
-                    // $particles[$generation + 1][$key]['estimatedEffort'] = $esimated_effort;
-                    // $particles[$generation + 1][$key]['ucp'] = $UCP;
-                    // $particles[$generation + 1][$key]['ae'] = abs($esimated_effort - floatval($projects['actualEffort']));
-                    // $particles[$generation + 1][$key]['xSimple'] = $xSimple;
-                    // $particles[$generation + 1][$key]['xAverage'] = $xAverage;
-                    // $particles[$generation + 1][$key]['xComplex'] = $xComplex;
-
-                    print_r($new_fireflies[$index_min_ae]);
-                    echo '<p>';
+                    // echo '<p>';
                 }
-                dd($positions);
+                //print_r($global_min[$generation]);
+                echo '<br>';
+                ## Initialize female fireflies in Archive A
+                $archive_A[$generation + 1] = $particles[$generation + 1];
+                ## Initialize selection probabilites
+                $selection_probabilities[$generation + 1] = $this->selectionProbabilities($archive_A[$generation + 1]);
+
+                $global_min_ae = min(array_column($particles[$generation + 1], 'ae'));
+                $index_global_min = array_search($global_min_ae, array_column($particles[$generation + 1], 'ae'));
+                $global_min[$generation + 1] = $particles[$generation + 1][$index_global_min];
+                print_r($global_min[$generation]);
+
+                echo '<p>';
+                echo '<p>';
+                //dd($particles);
+                //}
+
                 ## Fitness evaluations
-                if ($Xbest[$generation]['ae'] < $this->parameters['fitness']) {
-                    return $Xbest[$generation];
-                } else {
-                    $results[] = $Xbest[$generation];
-                }
+                // if ($Xbest[$generation]['ae'] < $this->parameters['fitness']) {
+                //     return $Xbest[$generation];
+                // } else {
+                //     $results[] = $Xbest[$generation];
+                // }
             } ## End of if generation > 0
         } ## End of Generation
-        $best = min(array_column($results, 'ae'));
-        $index = array_search($best, array_column($results, 'ae'));
-        return $results[$index];
     }
 
     function processingDataset()
@@ -384,15 +515,16 @@ class Raoptimizer
 
 
 $file_name = 'silhavy_dataset.txt';
+$fun = 1;
 $particle_size = 20;
 $maximum_generation = 40;
-$trials = 1000;
+$trials = 1;
 $s = 0.5;
 $a = 0.5;
 $b_min = 0.2;
 $b = 1;
 $g = 1;
-$fitness = 10;
+$fitness = 100;
 
 $parameters = ['particle_size' => $particle_size, 'maximum_generation' => $maximum_generation, 'trials' => $trials, 's' => $s, 'a' => $a, 'b_min' => $b_min, 'b' => $b, 'g' => $g, 'fitness' => $fitness];
 $productivity_factor = 20;
