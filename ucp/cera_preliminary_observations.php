@@ -565,7 +565,7 @@ foreach ($combinations as $key => $combination) {
         'a' => $a, 
         'b' => $b, 
         'fitness' => $fitness,
-        'initial_chaos_value' => 0.8,
+        'initial_chaos_value' => (float) rand() / (float) getrandmax(),
         'chaotic_type' => $combination['chaotic']
     ];
     $productivity_factor = 20;

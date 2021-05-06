@@ -721,7 +721,8 @@ Trials = 10, initial chaos = random
 25.72363095331,100,0.9,singer
 20.20598318539,100,0.9,sinu
 
-Trials = 10, initial chaos = 0.8366.3455768296,10,0.1,bernoulli
+Trials = 10, initial chaos = 0.8
+366.3455768296,10,0.1,bernoulli
 20.068744023807,10,0.1,chebyshev
 100.4771212306,10,0.1,circle
 596.3696853324,10,0.1,gauss
