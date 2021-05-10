@@ -1,4 +1,5 @@
 <?php
+require_once 'optimizer.php';
 
 interface OptimizersInterface
 {
@@ -96,15 +97,3 @@ class OptimizerFactory
         return $types[$index]['optimizer'];
     }
 }
-
-## Instantiation / usage
-// $type = ['bernoulli', 'sine', 'chebyshev', 'circle', 'gauss', 'logistic', 'singer', 'sinu'];
-// $chaos_value = 0.8;
-// $iteration = 1;
-
-// foreach ($type as $x) {
-//     $chaoticFactory = new ChaoticFactory();
-//     $chaos = $chaoticFactory->initializeChaotic($x, $iteration);
-//     echo $chaos->chaotic($chaos_value);
-//     echo '<br>';
-// }

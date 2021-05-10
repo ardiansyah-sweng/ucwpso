@@ -91,6 +91,22 @@ class SinuChaotic implements ChaoticInterface
     }
 }
 
+class Cosine implements ChaoticInterface
+{
+    private $I;
+    private $t_max;
+
+    function __construct($I, $t_max){
+        $this->I = $I;
+        $this->t_max = $t_max;
+    }
+
+    public function chaotic($chaos_value)
+    {
+        return cos( ($this->I * pi()) / $this->t_max);
+    }
+}
+
 /**
  * Chaotic algorithm selection
  *
@@ -126,6 +142,9 @@ class ChaoticFactory
         if ($type === 'sinu') {
             return new SinuChaotic();
         }
+        // if ($type === 'cosine') {
+        //     return new Cosine($I, $t_max);
+        // }
     }
 }
 

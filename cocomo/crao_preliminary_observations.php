@@ -8,20 +8,23 @@ class Raoptimizer
     protected $scales;
     protected $particle_size;
     protected $maximum_generation;
+    protected $lower_bound;
+    protected $upper_bound;
     protected $trials;
+    protected $fitness;
+    protected $chaotic_type;
 
-    function __construct($dataset_name, $scales, $particle_size, $maximum_generation, $trials)
+    function __construct($dataset_name, $scales, $particle_size, $maximum_generation, $lower_bound, $upper_bound, $trials, $fitness, $chaotic_type)
     {
         $this->dataset_name = $dataset_name;
         $this->scales = $scales;
         $this->particle_size = $particle_size;
         $this->maximum_generation = $maximum_generation;
+        $this->lower_bound = $lower_bound;
+        $this->upper_bound = $upper_bound;
         $this->trials = $trials;
-    }
-
-    function randomZeroToOne()
-    {
-        return (float) rand() / (float) getrandmax();
+        $this->fitness = $fitness;
+        $this->chaotic_type = $chaotic_type;
     }
 
     function prepareDataset()
@@ -50,7 +53,7 @@ class Raoptimizer
 
     function estimating($A, $size, $E, $effort_multipliers)
     {
-        return $A * pow($size, $E) * array_sum($effort_multipliers);
+        return $A * pow($size, $E) * array_product($effort_multipliers);
     }
 
     function minimalAE($particles)
@@ -67,6 +70,27 @@ class Raoptimizer
             $ae[] = $val['ae'];
         }
         return $particles[array_search(max($ae), $ae)];
+    }
+
+    function randomZeroToOne()
+    {
+        return (float) rand() / (float) getrandmax();
+    }
+
+    function candidating($particles, $individu)
+    {
+        for ($i = 1; $i <= 2; $i++) {
+            $ae_candidate = $particles[array_rand($particles)];
+
+            if ($individu['ae'] > $ae_candidate['ae']) {
+                $candidate = $ae_candidate['A'];
+            }
+            if ($individu['ae'] < $ae_candidate['ae'] || $individu['ae'] == $ae_candidate['ae']) {
+                $candidate = $individu['A'];
+            }
+            $ret[$i] = $candidate;
+        }
+        return $ret;
     }
 
     function cocomo($projects)
@@ -96,16 +120,16 @@ class Raoptimizer
 
         for ($generation = 0; $generation <= $this->maximum_generation - 1; $generation++) {
             $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic('chebyshev', $generation);
+            $chaos = $chaoticFactory->initializeChaotic($this->chaotic_type, $generation);
 
             ## Generate population
             if ($generation === 0) {
                 $r1[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                $r2[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
                 $B[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
-
                 for ($i = 0; $i <= $this->particle_size - 1; $i++) {
-                    $A = mt_rand(0.01 * 100, 5 * 100) / 100;
 
+                    $A = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
                     $E = $this->scaleEffortExponent($B[$generation + 1], $SF);
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
@@ -118,30 +142,56 @@ class Raoptimizer
 
             if ($generation > 0) {
                 $r1[$generation + 1] = $chaos->chaotic($r1[$generation]);
+                $r2[$generation + 1] = $chaos->chaotic($r2[$generation]);
                 $B[$generation + 1] = $chaos->chaotic($B[$generation]);
+                foreach ($particles[$generation] as $i => $particle) {
 
-                for ($i = 0; $i <= $this->particle_size - 1; $i++) {
-                    $A = $particles[$generation][$i]['A'] + $r1[$generation] * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+                    ## Rao-1
+                    // $A = $particles[$generation][$i]['A'] + $r1[$generation] * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+
+                    $candidates = $this->candidating($particles[$generation], $particle);
+                    ## Rao-2
+                    // $A = $particles[$generation][$i]['A'] + $r1[$generation] * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']) + ($r2[$generation] * (abs($candidates[1]) - abs($candidates[2])));
+
+                    ## Rao-3
+                    $A = $particles[$generation][$i]['A'] + $r1[$generation] * ($best_particles[$generation]['A'] - abs($worst_particles[$generation]['A'])) + ($r2[$generation] * (abs($candidates[1]) - $candidates[2]));
 
                     $E = $this->scaleEffortExponent($B[$generation], $SF);
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
                     $particles[$generation + 1][$i]['A'] = $A;
-                    $particles[$generation + 1][$i]['B'] = $B[$generation + 1];
+                    $particles[$generation + 1][$i]['B'] = $B[$generation];
+                    $particles[$generation][$i]['E'] = $E;
+                    $particles[$generation][$i]['EM'] = array_sum($EM);
+                    $particles[$generation][$i]['SF'] = array_sum($SF);
+                    $particles[$generation][$i]['size'] = $projects['kloc'];
+                    $particles[$generation][$i]['effort'] = $projects['effort'];
                     $particles[$generation + 1][$i]['estimatedEffort'] = $estimated_effort;
                     $particles[$generation + 1][$i]['ae'] = abs($estimated_effort - $projects['effort']);
                 }
             } ## End if generation > 0
             $best_particles[$generation + 1] = $this->minimalAE($particles[$generation + 1]);
             $worst_particles[$generation + 1] = $this->maximalAE($particles[$generation + 1]);
-            $ret[] = $best_particles[$generation + 1];
-            $ret[] = $worst_particles[$generation + 1];
+
+            ## Fitness evaluation
+            if ($best_particles[$generation + 1]['ae'] < $this->fitness) {
+                return $best_particles[$generation + 1];
+            } else {
+                $results[] = $best_particles[$generation + 1];
+            }
+            // $ret[] = $best_particles[$generation + 1];
+            // $ret[] = $worst_particles[$generation + 1];
         } ## End of Generation
-        $best = min(array_column($ret, 'ae'));
-        $best_index = array_search($best, array_column($ret, 'ae'));
-        $solutions['best'] = $ret[$best_index]['ae'];
-        $solutions['worst'] = $ret[$best_index + 1]['ae'];
-        return $solutions;
+        $best = min(array_column($results, 'ae'));
+        $index = array_search($best, array_column($results, 'ae'));
+        return $results[$index];
+
+
+        // $best = min(array_column($results, 'ae'));
+        // $best_index = array_search($best, array_column($ret, 'ae'));
+        // $solutions['best'] = $ret[$best_index]['ae'];
+        // $solutions['worst'] = $ret[$best_index + 1]['ae'];
+        // return $solutions;
     }
 
     function processingDataset()
@@ -201,7 +251,6 @@ class Raoptimizer
                 for ($i = 0; $i <= $this->trials - 1; $i++) {
                     $results[] = $this->cocomo($projects);
                 }
-
                 $A = array_sum(array_column($results, 'A')) / $this->trials;
                 $B = array_sum(array_column($results, 'B')) / $this->trials;
                 $results = [];
@@ -240,21 +289,48 @@ $scales = array(
     "site" => array("vl" => 1.22, "l" => 1.09, "n" => 1.00, "h" => 0.93, "vh" => 0.86, "eh" => 0.80),
     "sced" => array("vl" => 1.43, "l" => 1.14, "n" => 1.00, "h" => 1.00, "vh" => 1.00, "eh" => '')
 );
+function get_combinations($arrays)
+{
+    $result = array(array());
+    foreach ($arrays as $property => $property_values) {
+        $tmp = array();
+        foreach ($result as $result_item) {
+            foreach ($property_values as $property_value) {
+                $tmp[] = array_merge($result_item, array($property => $property_value));
+            }
+        }
+        $result = $tmp;
+    }
+    return $result;
+}
 
-$file_name = 'cocomo.txt';
-$particle_size = 10;
-$maximum_generation = 40;
-$trials = 30;
+$combinations = get_combinations(
+    array(
+        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+    )
+);
 
-$optimize = new Raoptimizer($file_name, $scales, $particle_size, $maximum_generation, $trials);
-$optimized = $optimize->processingDataset();
-$mae = array_sum(array_column($optimized, 'ae')) / 93;
-echo 'MAE: ' . $mae;
-echo '<p>';
-foreach ($optimize->processingDataset() as $key => $result) {
-    echo $key . '<br>';
-    print_r($result);
-    $data = array($result['ae']);
+foreach ($combinations as $key => $combination) {
+    $file_name = 'cocomo.txt';
+    $particle_size = $combination['particle_size'];
+    $maximum_generation = 40;
+    $trials = 10;
+    $lower_bound = 0.01;
+    $upper_bound = 5;
+    $fitness = 10;
+    $number_of_project_cocomo = 93;
+    $chaotic_type = $combination['chaotic'];
+
+    $optimize = new Raoptimizer($file_name, $scales, $particle_size, $maximum_generation, $lower_bound, $upper_bound, $fitness, $trials, $chaotic_type);
+
+    $optimized = $optimize->processingDataset();
+    $mae = array_sum(array_column($optimized, 'ae')) / $number_of_project_cocomo;
+    echo 'MAE: ' . $mae;
+    echo '&nbsp; &nbsp; ';
+    print_r($combination);
+    echo '<br>';
+    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
     $fp = fopen('hasil_crao_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

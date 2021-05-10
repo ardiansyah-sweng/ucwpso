@@ -230,7 +230,7 @@ class Raoptimizer
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
             $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic('bernoulli', $generation);
+            $chaos = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation);
 
             //$r1 = $this->randomZeroToOne(); ## Non chaotic
             //$r2 = $this->randomZeroToOne();
@@ -267,29 +267,29 @@ class Raoptimizer
                 $r2[$generation + 1] = $chaos->chaotic($r2[$generation]);
                 ## Entering Rao algorithm for HQ population
                 foreach ($particles[$generation] as $i => $individu) {
-                    $candidates = $this->candidating($particles[$generation], $individu);
+                    //$candidates = $this->candidating($particles[$generation], $individu);
 
                     ## Rao-1 
-                    $friction_factor_weights = $this->updateWeights(
-                        $individu['friction_factors_weights'],
-                        $r1[$generation],
-                        $r2,
-                        $candidates['dynamic_force_factor'],
-                        $Xbest[$generation]['friction_factors_weights'],
-                        $Xworst[$generation]['friction_factors_weights'],
-                        'rao-1',
-                        'friction_factors'
-                    );
-                    $dynamic_force_factor_weights = $this->updateWeights(
-                        $individu['dynamic_force_factor_weights'],
-                        $r1[$generation],
-                        $r2,
-                        $candidates['dynamic_force_factor'],
-                        $Xbest[$generation]['dynamic_force_factor_weights'],
-                        $Xworst[$generation]['dynamic_force_factor_weights'],
-                        'rao-1',
-                        'dynamic_force_factors'
-                    );
+                    // $friction_factor_weights = $this->updateWeights(
+                    //     $individu['friction_factors_weights'],
+                    //     $r1[$generation],
+                    //     $r2,
+                    //     $candidates['dynamic_force_factor'],
+                    //     $Xbest[$generation]['friction_factors_weights'],
+                    //     $Xworst[$generation]['friction_factors_weights'],
+                    //     'rao-1',
+                    //     'friction_factors'
+                    // );
+                    // $dynamic_force_factor_weights = $this->updateWeights(
+                    //     $individu['dynamic_force_factor_weights'],
+                    //     $r1[$generation],
+                    //     $r2,
+                    //     $candidates['dynamic_force_factor'],
+                    //     $Xbest[$generation]['dynamic_force_factor_weights'],
+                    //     $Xworst[$generation]['dynamic_force_factor_weights'],
+                    //     'rao-1',
+                    //     'dynamic_force_factors'
+                    // );
 
                     ## Rao-2
                     // $candidates = $this->candidating($particles[$generation], $individu);
@@ -315,27 +315,27 @@ class Raoptimizer
                     // );
 
                     ## Rao-3 
-                    // $candidates = $this->candidating($particles[$generation], $individu);
-                    // $friction_factor_weights = $this->updateWeights(
-                    //     $individu['friction_factors_weights'],
-                    //     $r1[$generation],
-                    //     $r2[$generation],
-                    //     $candidates['friction_factors'],
-                    //     $Xbest[$generation]['friction_factors_weights'],
-                    //     $Xworst[$generation]['friction_factors_weights'],
-                    //     'rao-3',
-                    //     'friction_factors'
-                    // );
-                    // $dynamic_force_factor_weights = $this->updateWeights(
-                    //     $individu['dynamic_force_factor_weights'],
-                    //     $r1[$generation],
-                    //     $r2[$generation],
-                    //     $candidates['dynamic_force_factor'],
-                    //     $Xbest[$generation]['dynamic_force_factor_weights'],
-                    //     $Xworst[$generation]['dynamic_force_factor_weights'],
-                    //     'rao-3',
-                    //     'dynamic_force_factors'
-                    // );
+                    $candidates = $this->candidating($particles[$generation], $individu);
+                    $friction_factor_weights = $this->updateWeights(
+                        $individu['friction_factors_weights'],
+                        $r1[$generation],
+                        $r2[$generation],
+                        $candidates['friction_factors'],
+                        $Xbest[$generation]['friction_factors_weights'],
+                        $Xworst[$generation]['friction_factors_weights'],
+                        'rao-3',
+                        'friction_factors'
+                    );
+                    $dynamic_force_factor_weights = $this->updateWeights(
+                        $individu['dynamic_force_factor_weights'],
+                        $r1[$generation],
+                        $r2[$generation],
+                        $candidates['dynamic_force_factor'],
+                        $Xbest[$generation]['dynamic_force_factor_weights'],
+                        $Xworst[$generation]['dynamic_force_factor_weights'],
+                        'rao-3',
+                        'dynamic_force_factors'
+                    );
 
                     $friction_factor = $this->products($friction_factor_weights);
                     $dynamic_force_factor = $this->products($dynamic_force_factor_weights);
@@ -412,50 +412,71 @@ $dataset = [
     ]
 ];
 
-$particle_size = 100;
-$maximum_generation = 40;
-$trials = 30;
-$fitness = 0.1;
-$friction_factors = [
-    'ff_team_composition' => 0.91,
-    'ff_process' => 0.89,
-    'ff_environmental_factors' => 0.96,
-    'ff_team_dynamics' => 0.85,
-    'max' => 1
-];
-$dynamic_force_factors = [
-    'dff_expected_team_change' => 0.91,
-    'dff_introduction_new_tools' => 0.96,
-    'dff_vendor_defect' => 0.90,
-    'dff_team_member_responsibility' => 0.98,
-    'dff_personal_issue' => 0.98,
-    'dff_expected_delay' => 0.96,
-    'dff_expected_ambiguity' => 0.95,
-    'dff_expected_change' => 0.97,
-    'dff_expected_relocation' => 0.98,
-    'max' => 1
-];
-$parameters = [
-    'particle_size' => $particle_size,
-    'maximum_generation' => $maximum_generation,
-    'trials' => $trials,
-    'fitness' => $fitness,
-    'friction_factors' => $friction_factors,
-    'dynamic_force_factors' => $dynamic_force_factors
-];
+function get_combinations($arrays)
+{
+    $result = array(array());
+    foreach ($arrays as $property => $property_values) {
+        $tmp = array();
+        foreach ($result as $result_item) {
+            foreach ($property_values as $property_value) {
+                $tmp[] = array_merge($result_item, array($property => $property_value));
+            }
+        }
+        $result = $tmp;
+    }
+    return $result;
+}
 
-$optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
-$optimized = $optimize->processingDataset();
+$combinations = get_combinations(
+    array(
+        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+    )
+);
 
-$mae = array_sum(array_column($optimized, 'ae')) / 21;
-echo 'MAE: ' . $mae;
+foreach ($combinations as $key => $combination) {
+    $particle_size = $combination['particle_size'];
+    $maximum_generation = 40;
+    $trials = 10;
+    $fitness = 0.1;
+    $friction_factors = [
+        'ff_team_composition' => 0.91,
+        'ff_process' => 0.89,
+        'ff_environmental_factors' => 0.96,
+        'ff_team_dynamics' => 0.85,
+        'max' => 1
+    ];
+    $dynamic_force_factors = [
+        'dff_expected_team_change' => 0.91,
+        'dff_introduction_new_tools' => 0.96,
+        'dff_vendor_defect' => 0.90,
+        'dff_team_member_responsibility' => 0.98,
+        'dff_personal_issue' => 0.98,
+        'dff_expected_delay' => 0.96,
+        'dff_expected_ambiguity' => 0.95,
+        'dff_expected_change' => 0.97,
+        'dff_expected_relocation' => 0.98,
+        'max' => 1
+    ];
+    $parameters = [
+        'particle_size' => $particle_size,
+        'maximum_generation' => $maximum_generation,
+        'trials' => $trials,
+        'fitness' => $fitness,
+        'friction_factors' => $friction_factors,
+        'dynamic_force_factors' => $dynamic_force_factors,
+        'chaotic_type' => $combination['chaotic']
+    ];
 
-echo '<p>';
-foreach ($optimized as $key => $result) {
-    echo $key . ' ';
-    print_r($result['ae']);
+    $optimize = new Raoptimizer($dataset, $parameters, $dataset_name);
+    $optimized = $optimize->processingDataset();
+    $mae = array_sum(array_column($optimized, 'ae')) / 21;
+    echo 'MAE: ' . $mae;
+    echo '&nbsp; &nbsp; ';
+    print_r($combination);
+
     echo '<br>';
-    $data = array($result['ae']);
+    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
     $fp = fopen('hasil_rao_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

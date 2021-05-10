@@ -147,7 +147,8 @@ class Cocomo extends Optimizer
                         'best_X' => $best_particles[$generation]['A'],
                         'worst_X' => $worst_particles[$generation]['A'],
                         'particles' => $particles[$generation],
-                        'individu' => $particle
+                        'individu' => $particle,
+                        'generation' => $generation
                     ];
 
                     $optimizerFactory = new OptimizerFactory();
@@ -292,15 +293,18 @@ $optimizer_methods = [
 ];
 
 $parameters = [
-    'swarm_size' => 80,
+    'swarm_size' => 10,
     'max_generation' => 40,
     'fitness' => 10,
     'dimensions' => $problem_dimensions,
     'file_name' => 'cocomo.txt',
     'trials' => 30,
-    'chaotic_type' => 'singer',
-    'optimizer_type' => 'rao2',
+    'chaotic_type' => 'xxx',
+    'optimizer_type' => 'era',
     'project_size' => 93,
+    's' => 0.5,
+    'a' => 0.5,
+    'b' => 0.9,
     'initial_chaos' => (float) rand() / (float) getrandmax()
 ];
 

@@ -1,5 +1,6 @@
 <?php
 set_time_limit(1000000);
+include '../chaotic_interface.php';
 
 class Raoptimizer
 {
@@ -22,16 +23,6 @@ class Raoptimizer
         $this->upper_bound = $upper_bound;
         $this->trials = $trials;
         $this->fitness = $fitness;
-    }
-
-    function singer($value)
-    {
-        return 1.07 * ((7.86 * $value) - (23.31 * POW($value, 2)) + (28.75 * POW($value, 3)) - (13.302875 * POW($value, 4)));
-    }
-
-    function sinu($chaos_value)
-    {
-        return (2.3 * POW($chaos_value, 2)) * sin(pi() * $chaos_value);
     }
 
     function prepareDataset()
@@ -126,42 +117,49 @@ class Raoptimizer
         $EM['sced'] = $projects['sced'];
 
         for ($generation = 0; $generation <= $this->maximum_generation - 1; $generation++) {
-            $r1 = $this->randomzeroToOne();
-            $r2 = $this->randomzeroToOne();
-            $B = $this->randomZeroToOne();
+            $chaoticFactory = new ChaoticFactory();
+            $chaos = $chaoticFactory->initializeChaotic('chebyshev', $generation);
+
             ## Generate population
             if ($generation === 0) {
+                $r1[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                $B[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                $r2 = $this->randomzeroToOne();
+
                 for ($i = 0; $i <= $this->particle_size - 1; $i++) {
                     $A = mt_rand($this->lower_bound * 100, $this->upper_bound * 100) / 100;
-                    $E = $this->scaleEffortExponent($B, $SF);
+                    $E = $this->scaleEffortExponent($B[$generation + 1], $SF);
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
                     $particles[$generation + 1][$i]['A'] = $A;
-                    $particles[$generation + 1][$i]['B'] = $B;
+                    $particles[$generation + 1][$i]['B'] = $B[$generation + 1];
                     $particles[$generation + 1][$i]['estimatedEffort'] = $estimated_effort;
                     $particles[$generation + 1][$i]['ae'] = abs($estimated_effort - $projects['effort']);
                 }
             } ## End if generation = 0
 
             if ($generation > 0) {
+                $r1[$generation + 1] = $chaos->chaotic($r1[$generation]);
+                $B[$generation + 1] = $chaos->chaotic($B[$generation]);
 
                 foreach ($particles[$generation] as $i => $particle) {
 
                     ## Rao-1
-                    // $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+                    $A = $particles[$generation][$i]['A'] + $r1[$generation] * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']);
+                    $A = $this->trimming($A);
 
                     $candidates = $this->candidating($particles[$generation], $particle);
                     ## Rao-2
                     // $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - $worst_particles[$generation]['A']) + ($r2 * (abs($candidates[1]) - abs($candidates[2])));
 
                     ## Rao-3
-                    $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - abs($worst_particles[$generation]['A'])) + ($r2 * (abs($candidates[1]) - $candidates[2]));
+                    // $A = $particles[$generation][$i]['A'] + $r1 * ($best_particles[$generation]['A'] - abs($worst_particles[$generation]['A'])) + ($r2 * (abs($candidates[1]) - $candidates[2]));
 
-                    $E = $this->scaleEffortExponent($B, $SF);
+                    $E = $this->scaleEffortExponent($B[$generation], $SF);
                     $estimated_effort = $this->estimating($A, $projects['kloc'], $E, $EM);
 
                     $particles[$generation + 1][$i]['A'] = $A;
-                    $particles[$generation + 1][$i]['B'] = $B;
+                    $particles[$generation + 1][$i]['B'] = $B[$generation];
                     $particles[$generation][$i]['E'] = $E;
                     $particles[$generation][$i]['EM'] = array_sum($EM);
                     $particles[$generation][$i]['SF'] = array_sum($SF);
@@ -193,6 +191,16 @@ class Raoptimizer
         // $solutions['best'] = $ret[$best_index]['ae'];
         // $solutions['worst'] = $ret[$best_index + 1]['ae'];
         // return $solutions;
+    }
+    function trimming($dimension_value)
+    {
+        if ($dimension_value < $this->lower_bound) {
+            return $this->lower_bound;
+        }
+        if ($dimension_value > $this->upper_bound) {
+            return $this->upper_bound;
+        }
+        return $dimension_value;
     }
 
     function processingDataset()
@@ -292,9 +300,9 @@ $scales = array(
 );
 
 $file_name = 'cocomo.txt';
-$particle_size = 40;
+$particle_size = 100;
 $maximum_generation = 40;
-$trials = 1000;
+$trials = 30;
 $lower_bound = 0.01;
 $upper_bound = 5;
 $fitness = 10;
@@ -309,18 +317,8 @@ foreach ($optimized as $key => $result) {
     echo $key . ' ';
     print_r($result);
     echo '<br>';
-    $data = array($result['A'], $result['B'], $result['E'], $result['effort'], $result['estimatedEffort'], $result['ae']);
+    $data = array($result['ae']);
     $fp = fopen('hasil_rao_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);
 }
-
-// foreach ($optimize->processingDataset() as $key => $result) {
-//     $best = array_sum(array_column($result, 'best')) / $trials;
-//     $worst = array_sum(array_column($result, 'worst')) / $trials;
-//     echo $key . ' ' . $best . ' -- ' . $worst . '<br>';
-//     $data = array($key, $best, $worst);
-//     $fp = fopen('hasil_rao1_estimated.txt', 'a');
-//     fputcsv($fp, $data);
-//     fclose($fp);
-// }

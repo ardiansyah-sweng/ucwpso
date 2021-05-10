@@ -1,5 +1,6 @@
 <?php
 set_time_limit(1000000);
+include '../chaotic_interface.php';
 
 class Raoptimizer
 {
@@ -411,11 +412,14 @@ class Raoptimizer
             $r2 = $this->randomZeroToOne();
             $r1_mutation = $this->randomZeroToOne();
             $r2_mutation = $this->randomZeroToOne();
+            $chaoticFactory = new ChaoticFactory();
+            $chaos = $chaoticFactory->initializeChaotic('logistic', $generation);
 
             ## Generate population
             if ($generation === 0) {
                 for ($i = 0; $i <= $this->parameters['particle_size'] - 1; $i++) {
-                    $chaotic[$generation + 1] = $this->singer($this->randomzeroToOne());
+                    $chaotic1[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                    $chaotic2[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
 
                     $friction_factor_weights = $this->frictionFactorsRandomWeight();
                     $dynamic_force_factor_weights = $this->dynamicForceFactorsRandomWeight();
@@ -438,7 +442,8 @@ class Raoptimizer
             } ## End if generation = 0
 
             if ($generation > 0) {
-                $chaotic[$generation + 1] = $this->singer($chaotic[$generation]);
+                $chaotic1[$generation + 1] = $chaos->chaotic($chaotic1[$generation]);
+                $chaotic2[$generation + 1] = $chaos->chaotic($chaotic2[$generation]);
                 $sorted_particles = $this->qualityEvalution($particles[$generation]);
                 $Xbest[$generation] = $this->minimalAE($sorted_particles);
                 $Xworst[$generation] = $this->maximalAE($sorted_particles);
@@ -458,8 +463,8 @@ class Raoptimizer
                     $candidates = $this->candidating($splitted_particles['hq'], $individu);
                     $friction_factor_weights = $this->updateWeights(
                         $individu['friction_factors_weights'],
-                        $chaotic[$generation + 1],
-                        $chaotic[$generation + 1],
+                        $chaotic1[$generation + 1],
+                        $chaotic2[$generation + 1],
                         $candidates['friction_factors'],
                         $Xbest[$generation]['friction_factors_weights'],
                         $Xworst[$generation]['friction_factors_weights'],
@@ -468,8 +473,8 @@ class Raoptimizer
                     );
                     $dynamic_force_factor_weights = $this->updateWeights(
                         $individu['dynamic_force_factor_weights'],
-                        $chaotic[$generation + 1],
-                        $chaotic[$generation + 1],
+                        $chaotic1[$generation + 1],
+                        $chaotic2[$generation + 1],
                         $candidates['dynamic_force_factor'],
                         $Xbest[$generation]['dynamic_force_factor_weights'],
                         $Xworst[$generation]['dynamic_force_factor_weights'],
@@ -586,9 +591,9 @@ $dataset = [
         'columns' => $ziauddin_columns
     ]
 ];
-$particle_size = 60;
+$particle_size = 100;
 $maximum_generation = 40;
-$trials = 1000;
+$trials = 30;
 $fitness = 0.1;
 $friction_factors = [
     'ff_team_composition' => 0.91,
@@ -631,7 +636,7 @@ foreach ($optimized as $key => $result) {
     echo $key . ' ';
     print_r($result);
     echo '<br>';
-    $data = array($result['actual_time'], $result['estimated_time'], $result['ae']);
+    $data = array($result['ae']);
     $fp = fopen('hasil_era_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

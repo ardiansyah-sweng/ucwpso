@@ -1,5 +1,6 @@
 <?php
 set_time_limit(1000000);
+include '../chaotic_interface.php';
 
 class Raoptimizer
 {
@@ -324,11 +325,14 @@ class Raoptimizer
             $r2 = $this->randomZeroToOne();
             $r1_mutation = $this->randomZeroToOne();
             $r2_mutation = $this->randomZeroToOne();
+            $chaoticFactory = new ChaoticFactory();
+            $chaos = $chaoticFactory->initializeChaotic('sine', $generation);
 
             ## Generate population
             if ($generation === 0) {
                 for ($i = 0; $i <= $this->parameters['particle_size']; $i++) {
-                    $chaotic[$generation + 1] = $this->sinu($this->randomzeroToOne());
+                    $chaotic1[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                    $chaotic2[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();
                     $xComplex = $this->randomComplexUCWeight();
@@ -346,7 +350,8 @@ class Raoptimizer
             } ## End if generation = 0
 
             if ($generation > 0) {
-                $chaotic[$generation + 1] = $this->sinu($chaotic[$generation]);
+                $chaotic1[$generation + 1] = $chaos->chaotic($chaotic1[$generation]);
+                $chaotic2[$generation + 1] = $chaos->chaotic($chaotic2[$generation]);
                 $sorted_particles = $this->qualityEvalution($particles[$generation]);
                 $Xbest[$generation] = $this->minimalAE($sorted_particles);
                 $Xworst[$generation] = $this->maximalAE($sorted_particles);
@@ -418,14 +423,14 @@ class Raoptimizer
                     // $xComplex = $particles[$generation][$i]['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
 
                     ## Rao-3 
-                    // $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2 * (abs($xSimple1) - $xSimple2));
-                    // $xAverage = $individu['xAverage'] + $r1 * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2 * (abs($xAverage1) - $xAverage2));
-                    // $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2 * (abs($xComplex1) - $xComplex2));
+                    $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2 * (abs($xSimple1) - $xSimple2));
+                    $xAverage = $individu['xAverage'] + $r1 * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2 * (abs($xAverage1) - $xAverage2));
+                    $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2 * (abs($xComplex1) - $xComplex2));
 
                     ## Rao-3 chaotic
-                    $xSimple = $individu['xSimple'] + $chaotic[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($chaotic[$generation] * (abs($xSimple1) - $xSimple2));
-                    $xAverage = $individu['xAverage'] + $chaotic[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($chaotic[$generation] * (abs($xAverage1) - $xAverage2));
-                    $xComplex = $individu['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($chaotic[$generation] * (abs($xComplex1) - $xComplex2));
+                    // $xSimple = $individu['xSimple'] + $chaotic1[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($chaotic2[$generation] * (abs($xSimple1) - $xSimple2));
+                    // $xAverage = $individu['xAverage'] + $chaotic1[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($chaotic2[$generation] * (abs($xAverage1) - $xAverage2));
+                    // $xComplex = $individu['xComplex'] + $chaotic1[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($chaotic2[$generation] * (abs($xComplex1) - $xComplex2));
 
                     if ($xSimple < $this->range_positions['min_xSimple']) {
                         $xSimple = $this->range_positions['min_xSimple'];
@@ -543,9 +548,9 @@ class Raoptimizer
 
 
 $file_name = 'silhavy_dataset.txt';
-$particle_size = 200;
+$particle_size = 100;
 $maximum_generation = 40;
-$trials = 1000;
+$trials = 30;
 $s = 0.5;
 $a = 0.5;
 $b = 0.9;
@@ -566,7 +571,7 @@ foreach ($optimized as $key => $result) {
     echo $key . ' ';
     print_r($result);
     echo '<br>';
-    $data = array($result['xSimple'], $result['xAverage'], $result['xComplex'], $result['estimatedEffort'], floatval($result['actualEffort']), $result['ae']);
+    $data = array($result['ae']);
     $fp = fopen('hasil_era_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

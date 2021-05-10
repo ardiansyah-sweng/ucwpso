@@ -140,16 +140,20 @@ class Raoptimizer
     function UCP($projects)
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
-            $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic('circle', $generation);
             // $r1 = $this->randomZeroToOne();
             // $r2 = $this->randomZeroToOne();
+            $chaoticFactory = new ChaoticFactory();
+
 
             ## Generate population
             if ($generation === 0) {
                 for ($i = 0; $i <= $this->parameters['particle_size']; $i++) {
-                    $r1[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
-                    $r2[$generation + 1] = $chaos->chaotic($this->randomZeroToOne());
+                    $I[$generation + 1] = 0;
+                    $cosine2 = $chaoticFactory->initializeChaotic('cosine', $generation, $I[$generation + 1], $this->parameters['maximum_generation']);
+                    $cosine1 = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation, $I[$generation + 1], $this->parameters['maximum_generation']);
+
+                    $r2[$generation + 1] = $cosine2->chaotic($this->randomZeroToOne());
+                    $r1[$generation + 1] = $cosine1->chaotic($this->randomZeroToOne());
 
                     $positions = $this->randomUCWeight();
                     $UCP = $this->size($positions, $projects);
@@ -164,11 +168,20 @@ class Raoptimizer
                 $Xbest[$generation + 1] = $this->minimalAE($particles[$generation + 1]);
                 $Xworst[$generation + 1] = $this->maximalAE($particles[$generation + 1]);
             } ## End if generation = 0
-
+            $a = 4/3;
             if ($generation > 0) {
-                // $chaotic[$generation + 1] = $this->singer($chaotic[$generation]);
-                $r1[$generation + 1] = $chaos->chaotic($r1[$generation]);
-                $r2[$generation + 1] = $chaos->chaotic($r2[$generation]);
+                $r1[$generation + 1] = $cosine1->chaotic($r1[$generation]);
+                $r2[$generation + 1] = $cosine2->chaotic($r2[$generation]);
+                if ($I[$generation] >= ( (5 * $this->parameters['maximum_generation']) / 6) ){
+                    $a = 2/9;
+                }
+                if ( $I[$generation] >= ($this->parameters['maximum_generation'] / 6) ){
+                    $a = 16/3;
+                }
+                $I[$generation + 1] = $I[$generation] + $a;
+
+                $cosine2 = $chaoticFactory->initializeChaotic('cosine', $generation, $I[$generation], $this->parameters['maximum_generation']);
+                $cosine1 = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation, $I[$generation], $this->parameters['maximum_generation']);
 
                 ## Entering Rao algorithm for HQ population
                 foreach ($particles[$generation] as $i => $individu) {
@@ -176,24 +189,24 @@ class Raoptimizer
                     $candidates = $this->candidating($particles[$generation], $individu);
 
                     ## Rao-1 
-                    // $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
-                    // $xAverage = $individu['xAverage'] + $r1 * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
-                    // $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
+                    // $xSimple = $individu['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
+                    // $xAverage = $individu['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
+                    // $xComplex = $individu['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
 
                     ## Rao-1 Chaotic
-                    $xSimple = $particles[$generation][$i]['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
-                    $xAverage = $particles[$generation][$i]['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
-                    $xComplex = $particles[$generation][$i]['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
+                    // $xSimple = $particles[$generation][$i]['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']);
+                    // $xAverage = $particles[$generation][$i]['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']);
+                    // $xComplex = $particles[$generation][$i]['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']);
 
                     ## Rao-2
-                    // $xSimple = $individu['xSimple'] + $r1 * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']) + ($r2 * (abs($candidates['xSimple1']) - abs($candidates['xSimple2'])));
-                    // $xAverage = $individu['xAverage'] + $r1 * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']) + ($r2 * (abs($candidates['xAverage1']) - abs($candidates['xAverage2'])));
-                    // $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']) + ($r2 * (abs($candidates['xComplex1']) - abs($candidates['xComplex2'])));
+                    // $xSimple = $individu['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - $Xworst[$generation]['xSimple']) + ($r2[$generation] * (abs($candidates['xSimple1']) - abs($candidates['xSimple2'])));
+                    // $xAverage = $individu['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - $Xworst[$generation]['xAverage']) + ($r2[$generation] * (abs($candidates['xAverage1']) - abs($candidates['xAverage2'])));
+                    // $xComplex = $individu['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - $Xworst[$generation]['xComplex']) + ($r2[$generation] * (abs($candidates['xComplex1']) - abs($candidates['xComplex2'])));
 
                     ## Rao-3 
-                    // $xSimple = $individu['xSimple'] + $r1[$generation]  * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2[$generation]  * (abs($candidates['xSimple1']) - $candidates['xSimple2']));
-                    // $xAverage = $individu['xAverage'] + $r1[$generation]  * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2[$generation]  * (abs($candidates['xAverage1']) - $candidates['xAverage2']));
-                    // $xComplex = $individu['xComplex'] + $r1[$generation]  * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2[$generation]  * (abs($candidates['xComplex1']) - $candidates['xComplex2']));
+                    $xSimple = $individu['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2[$generation] * (abs($candidates['xSimple1']) - $candidates['xSimple2']));
+                    $xAverage = $individu['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2[$generation] * (abs($candidates['xAverage1']) - $candidates['xAverage2']));
+                    $xComplex = $individu['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2[$generation] * (abs($candidates['xComplex1']) - $candidates['xComplex2']));
 
 
                     if ($xSimple < $this->range_positions['min_xSimple']) {
@@ -267,32 +280,56 @@ class Raoptimizer
     }
 } ## End of Raoptimizer
 
+function get_combinations($arrays)
+{
+    $result = array(array());
+    foreach ($arrays as $property => $property_values) {
+        $tmp = array();
+        foreach ($result as $result_item) {
+            foreach ($property_values as $property_value) {
+                $tmp[] = array_merge($result_item, array($property => $property_value));
+            }
+        }
+        $result = $tmp;
+    }
+    return $result;
+}
 
-$file_name = 'silhavy_dataset.txt';
-$particle_size = 80;
-$maximum_generation = 1000;
-$trials = 1000;
-$s = 0.5;
-$a = 0.5;
-$b = 0.9;
-$fitness = 10;
+$combinations = get_combinations(
+    array(
+        'particle_size' => array(50,60,70,80,90,100,200,250),
+        'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
+    )
+);
 
-$parameters = ['particle_size' => $particle_size, 'maximum_generation' => $maximum_generation, 'trials' => $trials, 's' => $s, 'a' => $a, 'b' => $b, 'fitness' => $fitness];
-$productivity_factor = 20;
+foreach ($combinations as $key => $combination) {
+    $file_name = 'silhavy_dataset.txt';
+    $particle_size = $combination['particle_size'];
+    $maximum_generation = 40;
+    $trials = 10;
+    $s = 0.5;
+    $a = 0.5;
+    $b = 0.9;
+    $fitness = 10;
 
-$range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
+    $parameters = [
+        'particle_size' => $particle_size,
+        'maximum_generation' => $maximum_generation,
+        'trials' => $trials, 's' => $s, 'a' => $a, 'b' => $b, 'fitness' => $fitness, 'chaotic_type' => $combination['chaotic']
+    ];
+    $productivity_factor = 20;
 
-$optimize = new Raoptimizer($file_name, $parameters, $productivity_factor, $range_positions);
-$optimized = $optimize->processingDataset();
+    $range_positions = ['min_xSimple' => 5, 'max_xSimple' => 7.49, 'min_xAverage' => 7.5, 'max_xAverage' => 12.49, 'min_xComplex' => 12.5, 'max_xComplex' => 15];
 
-echo 'MAE: ' . array_sum(array_column($optimized, 'ae')) / 71;
+    $optimize = new Raoptimizer($file_name, $parameters, $productivity_factor, $range_positions);
+    $optimized = $optimize->processingDataset();
+    $mae = array_sum(array_column($optimized, 'ae')) / 71;
+    echo 'MAE: ' . $mae;
+    echo '&nbsp; &nbsp; ';
+    print_r($combination);
 
-echo '<p>';
-foreach ($optimized as $key => $result) {
-    echo $key . ' ';
-    print_r($result);
     echo '<br>';
-    $data = array($result['ae']);
+    $data = array($mae, $combination['particle_size'], $combination['chaotic']);
     $fp = fopen('hasil_rao_estimated.txt', 'a');
     fputcsv($fp, $data);
     fclose($fp);

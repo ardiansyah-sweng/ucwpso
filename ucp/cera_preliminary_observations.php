@@ -301,17 +301,23 @@ class Raoptimizer
     function UCP($projects)
     {
         for ($generation = 0; $generation <= $this->parameters['maximum_generation']; $generation++) {
-            $r1 = $this->randomZeroToOne();
-            $r2 = $this->randomZeroToOne();
+            //$r1 = $this->randomZeroToOne();
+            //$r2 = $this->randomZeroToOne();
             $r1_mutation = $this->randomZeroToOne();
             $r2_mutation = $this->randomZeroToOne();
+
             $chaoticFactory = new ChaoticFactory();
-            $chaos = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation);
 
             ## Generate population
             if ($generation === 0) {
+                $I[$generation + 1] = 0;
+                $cosine2 = $chaoticFactory->initializeChaotic('cosine', $generation, $I[$generation + 1], $this->parameters['maximum_generation']);
+                $cosine1 = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation, $I[$generation + 1], $this->parameters['maximum_generation']);
+
                 for ($i = 0; $i <= $this->parameters['particle_size']; $i++) {
-                    $chaotic[$generation + 1] = $chaos->chaotic($this->parameters['initial_chaos_value']);
+                    $r2[$generation + 1] = $cosine2->chaotic($this->parameters['initial_chaos_value']);
+                    $r1[$generation + 1] = $cosine1->chaotic($this->parameters['initial_chaos_value']);
+
                     $xSimple = $this->randomSimpleUCWeight();
                     $xAverage = $this->randomAverageUCWeight();
                     $xComplex = $this->randomComplexUCWeight();
@@ -327,9 +333,21 @@ class Raoptimizer
                 }
                 $mutation_rate[$generation + 1] = $this->parameters['b'];
             } ## End if generation = 0
-
+            $a = 4/3;
             if ($generation > 0) {
-                $chaotic[$generation + 1] = $chaos->chaotic($chaotic[$generation]);
+                if ($I[$generation] >= ( (5 * $this->parameters['maximum_generation']) / 6) ){
+                    $a = 2/9;
+                }
+                if ( $I[$generation] >= ($this->parameters['maximum_generation'] / 6) ){
+                    $a = 16/3;
+                }
+                $I[$generation + 1] = $I[$generation] + $a;
+
+                $cosine2 = $chaoticFactory->initializeChaotic('cosine', $generation, $I[$generation], $this->parameters['maximum_generation']);
+                $cosine1 = $chaoticFactory->initializeChaotic($this->parameters['chaotic_type'], $generation, $I[$generation], $this->parameters['maximum_generation']);
+                $r2[$generation + 1] = $cosine2->chaotic($r1[$generation]);
+                $r1[$generation + 1] = $cosine1->chaotic($r2[$generation]);
+
                 $sorted_particles = $this->qualityEvalution($particles[$generation]);
                 $Xbest[$generation] = $this->minimalAE($sorted_particles);
                 $Xworst[$generation] = $this->maximalAE($sorted_particles);
@@ -406,9 +424,9 @@ class Raoptimizer
                     // $xComplex = $individu['xComplex'] + $r1 * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2 * (abs($xComplex1) - $xComplex2));
 
                     ## Rao-3 chaotic
-                    $xSimple = $individu['xSimple'] + $chaotic[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($chaotic[$generation] * (abs($xSimple1) - $xSimple2));
-                    $xAverage = $individu['xAverage'] + $chaotic[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($chaotic[$generation] * (abs($xAverage1) - $xAverage2));
-                    $xComplex = $individu['xComplex'] + $chaotic[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($chaotic[$generation] * (abs($xComplex1) - $xComplex2));
+                    $xSimple = $individu['xSimple'] + $r1[$generation] * ($Xbest[$generation]['xSimple'] - abs($Xworst[$generation]['xSimple'])) + ($r2[$generation] * (abs($xSimple1) - $xSimple2));
+                    $xAverage = $individu['xAverage'] + $r1[$generation] * ($Xbest[$generation]['xAverage'] - abs($Xworst[$generation]['xAverage'])) + ($r2[$generation] * (abs($xAverage1) - $xAverage2));
+                    $xComplex = $individu['xComplex'] + $r1[$generation] * ($Xbest[$generation]['xComplex'] - abs($Xworst[$generation]['xComplex'])) + ($r2[$generation] * (abs($xComplex1) - $xComplex2));
 
                     if ($xSimple < $this->range_positions['min_xSimple']) {
                         $xSimple = $this->range_positions['min_xSimple'];
@@ -541,7 +559,7 @@ function get_combinations($arrays)
 
 $combinations = get_combinations(
     array(
-        'particle_size' => array(10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+        'particle_size' => array(10,20,30,40,50,60,70,80,90,100,200),
         's' => array(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
         'chaotic' => array('bernoulli', 'chebyshev', 'circle', 'gauss', 'logistic', 'sine', 'singer', 'sinu'),
     )
@@ -559,11 +577,11 @@ foreach ($combinations as $key => $combination) {
 
     $parameters = [
         'particle_size' => $particle_size,
-        'maximum_generation' => $maximum_generation, 
-        'trials' => $trials, 
-        's' => $s, 
-        'a' => $a, 
-        'b' => $b, 
+        'maximum_generation' => $maximum_generation,
+        'trials' => $trials,
+        's' => $s,
+        'a' => $a,
+        'b' => $b,
         'fitness' => $fitness,
         'initial_chaos_value' => (float) rand() / (float) getrandmax(),
         'chaotic_type' => $combination['chaotic']
