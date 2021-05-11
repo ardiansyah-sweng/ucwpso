@@ -235,7 +235,7 @@ class Raoptimizer
                 }
 
                 $Xbest[$generation + 1] = $this->minimalAE($particles[$generation + 1]);
-                $Xworst[$generation + 1] = $this->maximalAE($particles[$generation + 1]);
+                $Xworst[$generation + 1] = $this->maximalAE($particles[$generation +1]);
             } ## End of if generation > 0
         } ## End of Generation
         $best = min(array_column($results, 'ae'));
